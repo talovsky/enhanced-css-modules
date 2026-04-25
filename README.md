@@ -85,4 +85,4 @@ License
 
 Acknowledgements
 
-- This project is inspired by and builds on ideas from the CSS Modules ecosystem.
+- This project is inspired by and builds on ideas from the CSS Modules ecosystem. Specifically, the [CSS Modules VS Code extension by clinyong](https://github.com/clinyong/vscode-css-modules)
