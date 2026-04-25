@@ -1,0 +1,80 @@
+{
+	"name": "enhanced-css-modules",
+	"displayName": "Enhanced CSS Modules",
+	"version": "0.0.1",
+	"description": "Rename, go to definition, and autocomplete for CSS Modules",
+	"repository": {
+		"type": "git",
+		"url": "https://github.com/talovsky/enhanced-css-modules.git"
+	},
+	"publisher": "talovsky",
+	"type": "module",
+	"main": "./out/extension.js",
+	"scripts": {
+		"vscode:prepublish": "pnpm run compile",
+		"build": "node ./esbuild.mjs",
+		"compile": "pnpm run build && pnpm run typecheck",
+		"typecheck": "tsc -p ./ --noEmit",
+		"watch": "node ./esbuild.mjs --watch",
+		"pretest": "pnpm run compile",
+		"lint": "oxlint src/*.ts",
+		"test": "node --test ./out/test/suite/*.test.js",
+		"prepare": "husky install"
+	},
+	"dependencies": {
+		"json5": "^2.2.0"
+	},
+	"devDependencies": {
+		"@types/node": "~25.6.0",
+		"@types/vscode": "^1.116.0",
+		"esbuild": "^0.28.0",
+		"eslint": "^7.27.0",
+		"husky": ">=6",
+		"nano-staged": "^1.0.2",
+		"oxfmt": "^0.46.0",
+		"oxlint": "^1.61.0",
+		"prettier": "^2.3.2",
+		"typescript": "^6.0.3"
+	},
+	"nano-staged": {
+		"*.ts": "oxfmt && oxlint",
+		"*.{md,json}": "oxfmt"
+	},
+	"contributes": {
+		"configuration": {
+			"type": "object",
+			"title": "Enhanced CSS Modules Configuration",
+			"properties": {
+				"enhancedCssModules.camelCase": {
+					"type": [
+						"boolean",
+						"string"
+					],
+					"default": false,
+					"description": "Transform classnames in autocomplete suggestions."
+				},
+				"enhancedCssModules.pathAlias": {
+					"type": "object",
+					"default": {},
+					"description": "Path alias for import module."
+				}
+			}
+		}
+	},
+	"activationEvents": [
+		"onLanguage:astro",
+		"onLanguage:css",
+		"onLanguage:javascript",
+		"onLanguage:javascriptreact",
+		"onLanguage:less",
+		"onLanguage:sass",
+		"onLanguage:scss",
+		"onLanguage:stylus",
+		"onLanguage:typescript",
+		"onLanguage:typescriptreact"
+	],
+	"icon": "icon/enhanced-css-modules.png",
+	"engines": {
+		"vscode": "^1.80.0"
+	}
+}

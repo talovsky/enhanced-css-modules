@@ -1,0 +1,27 @@
+{
+	"files.exclude": {
+		"out": false
+	},
+	"search.exclude": {
+		"out": true
+	},
+	"oxc.enable": true,
+	"[typescript]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+		// "editor.codeActionsOnSave": {
+		//   "source.fixAll.oxc": "always"
+		// }
+	},
+	"[javascript]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode"
+		// "editor.codeActionsOnSave": {
+		//   "source.fixAll.oxc": "always"
+		// }
+	},
+	"[json]": {
+		"editor.defaultFormatter": "oxc.oxc-vscode",
+		"editor.codeActionsOnSave": {
+			"source.fixAll.oxc": "always"
+		}
+	}
+}
