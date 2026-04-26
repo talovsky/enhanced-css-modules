@@ -12,10 +12,10 @@
 	"main": "./out/extension.js",
 	"scripts": {
 		"vscode:prepublish": "pnpm run compile",
-		"build": "node ./esbuild.mjs",
+		"build": "node ./esbuild.ts",
 		"compile": "pnpm run build && pnpm run typecheck",
 		"typecheck": "tsc -p ./ --noEmit",
-		"watch": "node ./esbuild.mjs --watch",
+		"watch": "node ./esbuild.ts --watch",
 		"pretest": "pnpm run compile",
 		"lint": "oxlint src/*.ts",
 		"test": "node --test ./out/test/suite/*.test.js",
