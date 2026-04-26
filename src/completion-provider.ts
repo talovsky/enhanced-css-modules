@@ -11,19 +11,7 @@ import {
 	isKebabCaseClassName,
 	createBracketCompletionItem
 } from "./utils";
-import {
-	type CssModuleImport,
-	findCssModuleImports,
-	findImportModuleFromImports,
-	resolveImportPath
-} from "./utils/path";
-
-interface CachedDocumentImports {
-	version: number;
-	imports: CssModuleImport[];
-}
-
-const documentImportCache = new WeakMap<TextDocument, CachedDocumentImports>();
+import { findImportModuleInDocument, resolveImportPath } from "./utils/path";
 
 function getWords(line: string, position: Position): string {
 	const text = line.slice(0, position.character);
@@ -36,18 +24,6 @@ function getWords(line: string, position: Position): string {
 	}
 
 	return convertText.slice(index);
-}
-
-function getImportModule(document: TextDocument, importName: string): string {
-	const version = document.version ?? -1;
-	const cached = documentImportCache.get(document);
-	if (cached && cached.version === version) {
-		return findImportModuleFromImports(cached.imports, importName);
-	}
-
-	const imports = findCssModuleImports(document.getText());
-	documentImportCache.set(document, { version, imports });
-	return findImportModuleFromImports(imports, importName);
 }
 
 export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvider = readOptions) {
@@ -69,7 +45,7 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 			const obj = segments[0];
 			const field = segments.at(-1) || "";
 
-			const importModule = getImportModule(document, obj);
+			const importModule = findImportModuleInDocument(document, obj);
 			if (importModule === "") {
 				return [];
 			}

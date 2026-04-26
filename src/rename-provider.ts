@@ -16,8 +16,8 @@ import { getRealPathAlias } from "./path-alias";
 import { type ClassTransformer, getClassTransformer, toCamelCase } from "./utils";
 import { type CssClass, findCssClasses, getCssClassesFromFile, getUsageNamesForCssName } from "./utils/class-names";
 import { getSourcePathCandidates } from "./utils/create-css-module";
-import { findCssModuleImports, findImportModule, resolveImportPath } from "./utils/path";
-import { type CssModuleUsage, findUsageRanges, getCssModuleUsageAtPosition } from "./utils/usages";
+import { findCssModuleImports, findImportModuleInDocument, resolveImportPath } from "./utils/path";
+import { type CssModuleUsage, findUsageRangesForClassNames, getCssModuleUsageAtPosition } from "./utils/usages";
 
 interface UsageTarget {
 	kind: "usage";
@@ -73,7 +73,7 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 		const usage = getCssModuleUsageAtPosition(document, position);
 		if (!usage) return null;
 
-		const importModule = findImportModule(document.getText(), usage.importName);
+		const importModule = findImportModuleInDocument(document, usage.importName);
 		if (!importModule) return null;
 
 		const importPath = await resolveImportPath(
@@ -241,11 +241,10 @@ function replaceUsageRanges(
 	names: RenameNames,
 	classTransformer: ClassTransformer | null
 ): void {
-	for (const oldUsageName of getUsageNamesForCssName(oldCssName, classTransformer)) {
-		for (const usage of findUsageRanges(document, importName, oldUsageName)) {
-			const replacement = usage.syntax === "bracket" ? names.cssName : names.usageName;
-			edit.replace(document.uri, usage.range, replacement);
-		}
+	const oldUsageNames = getUsageNamesForCssName(oldCssName, classTransformer);
+	for (const usage of findUsageRangesForClassNames(document, importName, oldUsageNames)) {
+		const replacement = usage.syntax === "bracket" ? names.cssName : names.usageName;
+		edit.replace(document.uri, usage.range, replacement);
 	}
 }
 
@@ -283,22 +282,26 @@ async function findCssModuleImporters(
 	for (const candidatePath of candidates) {
 		if (token.isCancellationRequested) break;
 
-		let content: string;
-		try {
-			content = await fs.readFile(candidatePath, { encoding: "utf8" });
-		} catch {
-			continue;
-		}
-
-		const dirname = path.dirname(candidatePath);
-		for (const item of findCssModuleImports(content)) {
-			if (path.normalize(path.resolve(dirname, item.moduleName)) === cssNormalized) {
-				importers.push({ uri: Uri.file(candidatePath), importName: item.importName });
+		const content = await readTextFile(candidatePath);
+		if (content !== null) {
+			const dirname = path.dirname(candidatePath);
+			for (const item of findCssModuleImports(content)) {
+				if (path.normalize(path.resolve(dirname, item.moduleName)) === cssNormalized) {
+					importers.push({ uri: Uri.file(candidatePath), importName: item.importName });
+				}
 			}
 		}
 	}
 
 	return importers;
+}
+
+async function readTextFile(filePath: string): Promise<string | null> {
+	try {
+		return await fs.readFile(filePath, { encoding: "utf8" });
+	} catch {
+		return null;
+	}
 }
 
 export default createCSSModuleRenameProvider;

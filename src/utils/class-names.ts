@@ -9,6 +9,7 @@ interface CachedCssClasses {
 	classes: CssClass[];
 }
 
+const MAX_CSS_CLASS_CACHE_ENTRIES = 200;
 const cssClassCache = new Map<string, CachedCssClasses>();
 
 export async function getCssClassesFromFile(filePath: string): Promise<CssClass[]> {
@@ -17,11 +18,12 @@ export async function getCssClassesFromFile(filePath: string): Promise<CssClass[
 		const mtime = stat.mtimeMs;
 		const cached = cssClassCache.get(filePath);
 		if (cached && cached.mtime === mtime) {
+			rememberCssClasses(filePath, cached);
 			return cached.classes;
 		}
 		const content = await fs.readFile(filePath, { encoding: "utf8" });
 		const classes = findCssClasses(content);
-		cssClassCache.set(filePath, { mtime, classes });
+		rememberCssClasses(filePath, { mtime, classes });
 		return classes;
 	} catch {
 		return [];
@@ -74,6 +76,22 @@ export function getUsageNamesForCssName(cssName: string, classTransformer: Class
 			].filter(Boolean)
 		)
 	];
+}
+
+function rememberCssClasses(filePath: string, cachedClasses: CachedCssClasses): void {
+	if (cssClassCache.has(filePath)) {
+		cssClassCache.delete(filePath);
+	}
+
+	cssClassCache.set(filePath, cachedClasses);
+	if (cssClassCache.size <= MAX_CSS_CLASS_CACHE_ENTRIES) {
+		return;
+	}
+
+	const oldestKey = cssClassCache.keys().next().value;
+	if (oldestKey) {
+		cssClassCache.delete(oldestKey);
+	}
 }
 
 function buildLineOffsets(content: string): number[] {

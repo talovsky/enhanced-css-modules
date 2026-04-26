@@ -1,12 +1,21 @@
 import * as fs from "node:fs/promises";
 import * as path from "node:path";
 
-import { PathAlias } from "../options";
+import type { TextDocument } from "vscode";
+
+import type { PathAlias } from "../options";
 
 export interface CssModuleImport {
 	importName: string;
 	moduleName: string;
 }
+
+interface CachedDocumentImports {
+	version: number;
+	imports: CssModuleImport[];
+}
+
+const documentImportCache = new WeakMap<TextDocument, CachedDocumentImports>();
 
 async function pathExists(p: string): Promise<boolean> {
 	try {
@@ -18,9 +27,9 @@ async function pathExists(p: string): Promise<boolean> {
 }
 
 export function genImportRegExp(key: string): RegExp {
-	const file = "(.+\\.(\\S{1,2}ss|stylus|styl))";
-	const fromOrRequire = "(?:from\\s+|=\\s+require(?:<any>)?\\()";
-	const requireEndOptional = "\\)?";
+	const file = String.raw`(.+\.(\S{1,2}ss|stylus|styl))`;
+	const fromOrRequire = String.raw`(?:from\s+|=\s+require(?:<any>)?\()`;
+	const requireEndOptional = String.raw`\)?`;
 	const pattern = `\\s${key}\\s+${fromOrRequire}["']${file}["']${requireEndOptional}`;
 	return new RegExp(pattern);
 }
@@ -29,9 +38,8 @@ export function findCssModuleImports(text: string): CssModuleImport[] {
 	const importRe =
 		/\s([A-Za-z_$][\w$]*)\s+(?:from\s+|=\s+require(?:<any>)?\()["'](.+\.(?:\S{1,2}ss|stylus|styl))["']\)?/g;
 	const imports: CssModuleImport[] = [];
-	let match: RegExpExecArray | null;
 
-	while ((match = importRe.exec(text)) !== null) {
+	for (let match = importRe.exec(text); match !== null; match = importRe.exec(text)) {
 		imports.push({
 			importName: match[1],
 			moduleName: match[2]
@@ -45,17 +53,33 @@ export function findImportModuleFromImports(imports: CssModuleImport[], key: str
 	return imports.find(item => item.importName === key)?.moduleName || "";
 }
 
+export function getCssModuleImportsFromDocument(document: TextDocument): CssModuleImport[] {
+	const version = document.version ?? -1;
+	const cached = documentImportCache.get(document);
+	if (cached && cached.version === version) {
+		return cached.imports;
+	}
+
+	const imports = findCssModuleImports(document.getText());
+	documentImportCache.set(document, { version, imports });
+	return imports;
+}
+
+export function findImportModuleInDocument(document: TextDocument, key: string): string {
+	return findImportModuleFromImports(getCssModuleImportsFromDocument(document), key);
+}
+
 async function resolveAliasPath(
 	moduleName: string,
 	aliasPrefix: string,
 	aliasPath: string | string[]
 ): Promise<string> {
-	const prefix = aliasPrefix.endsWith("/") ? aliasPrefix : aliasPrefix + "/";
+	const prefix = aliasPrefix.endsWith("/") ? aliasPrefix : `${aliasPrefix}/`;
 	const replacedModuleName = moduleName.replace(prefix, "");
 
 	const paths = typeof aliasPath === "string" ? [aliasPath] : aliasPath;
 	for (const aliasTarget of paths) {
-		const targetPath = path.resolve(aliasTarget, replacedModuleName);
+		const targetPath = path.resolve(`${aliasTarget}`, replacedModuleName);
 		if (await pathExists(targetPath)) {
 			return targetPath;
 		}

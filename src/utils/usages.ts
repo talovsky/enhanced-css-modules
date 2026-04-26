@@ -1,6 +1,6 @@
 import { Position, Range, type TextDocument } from "vscode";
 
-import { findImportModule, genImportRegExp } from "./path";
+import { findImportModuleInDocument, genImportRegExp } from "./path";
 
 export type UsageSyntax = "dot" | "bracket";
 
@@ -37,7 +37,7 @@ export function getCssModuleClickInfo(document: TextDocument, position: Position
 	}
 
 	return {
-		importModule: findImportModule(document.getText(), usage.importName),
+		importModule: findImportModuleInDocument(document, usage.importName),
 		targetClass: usage.className
 	};
 }
@@ -70,12 +70,20 @@ export function getCssModuleUsageAtPosition(document: TextDocument, position: Po
 }
 
 export function findUsageRanges(document: TextDocument, importName: string, className: string): CssModuleUsageRange[] {
+	return findUsageRangesForClassNames(document, importName, [className]);
+}
+
+export function findUsageRangesForClassNames(
+	document: TextDocument,
+	importName: string,
+	classNames: string[]
+): CssModuleUsageRange[] {
 	const text = document.getText();
 	const ranges: CssModuleUsageRange[] = [];
 	const escapedImport = escapeRegExp(importName);
-	const escapedClass = escapeRegExp(className);
+	const classNameSet = new Set(classNames);
 	const usageRe = new RegExp(
-		`${escapedImport}\\s*(?:(?:\\??\\.\\s*(${escapedClass})(?![-\\w$]))|(?:\\[\\s*(["'])(${escapedClass})\\2\\s*\\]))`,
+		`${escapedImport}\\s*(?:(?:\\??\\.\\s*([A-Za-z_$][\\w$]*)(?![-\\w$]))|(?:\\[\\s*(["'])([^"']+)\\2\\s*\\]))`,
 		"g"
 	);
 	let match: RegExpExecArray | null = null;
@@ -83,7 +91,7 @@ export function findUsageRanges(document: TextDocument, importName: string, clas
 	while ((match = usageRe.exec(text)) !== null) {
 		const foundName = match[1] || match[3];
 		const classStart = match.index + match[0].lastIndexOf(foundName);
-		if (isCodeOffset(text, match.index)) {
+		if (classNameSet.has(foundName) && isCodeOffset(text, match.index)) {
 			ranges.push({
 				range: new Range(document.positionAt(classStart), document.positionAt(classStart + foundName.length)),
 				syntax: match[1] ? "dot" : "bracket"
