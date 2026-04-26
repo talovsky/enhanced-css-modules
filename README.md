@@ -81,6 +81,10 @@ Rename behavior
   class (kebab-case / BEM-style), and the corresponding JS/TS accessors are
   updated to remain valid. This keeps your source code ergonomic while
   preserving readable CSS in the stylesheet.
+- Current limitation: rename matching does not understand JavaScript or
+  TypeScript scope shadowing. If you import a module as `styles` and later
+  declare another local `styles` variable, rename may still treat
+  `styles.className` as a CSS Module usage.
 
 Example
 

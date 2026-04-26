@@ -33,3 +33,33 @@ test("renames dot usages to camelCase when new CSS class is dashed", async () =>
 	);
 	assert.deepStrictEqual(usageEdits.map(item => item.newText).sort(), ["icon-primary", "iconPrimary"]);
 });
+
+test("does not rename usages inside strings or comments", async () => {
+	const document = await vscode.workspace.openTextDocument(renameTsxFile);
+	const provider = createCSSModuleRenameProvider(
+		readOptions({
+			camelCase: true
+		})
+	);
+
+	const edit = await provider.provideRenameEdits(document, new vscode.Position(2, 4), "icon-primary", token);
+	assert.ok(edit);
+
+	const usageEdits = edit.entries().find(([uri]) => uri.fsPath === renameTsxFile)?.[1] || [];
+	assert.deepStrictEqual(
+		usageEdits.map(item => [item.range.start.line, item.range.start.character, item.newText]),
+		[
+			[2, 3, "iconPrimary"],
+			[3, 4, "icon-primary"]
+		]
+	);
+});
+
+test("does not prepare rename inside strings or comments", async () => {
+	const document = await vscode.workspace.openTextDocument(renameTsxFile);
+	const provider = createCSSModuleRenameProvider(readOptions());
+
+	assert.strictEqual(await provider.prepareRename(document, new vscode.Position(4, 21), token), null);
+	assert.strictEqual(await provider.prepareRename(document, new vscode.Position(6, 6), token), null);
+	assert.strictEqual(await provider.prepareRename(document, new vscode.Position(7, 7), token), null);
+});
