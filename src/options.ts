@@ -9,6 +9,7 @@ export type PathAlias = AliasFromUserOptions | AliasFromTsConfig;
 
 export interface ExtensionOptions {
 	camelCase: CamelCaseValues;
+	createCssModuleTargetFolder: string;
 	pathAlias: AliasFromUserOptions;
 }
 
@@ -21,10 +22,12 @@ export function resolveOptions(options: ExtensionOptionsProvider): ExtensionOpti
 export function readOptions(): ExtensionOptions {
 	const configuration = workspace.getConfiguration(EXT_NAME);
 	const camelCase = configuration.get<CamelCaseValues>("camelCase", false);
+	const createCssModuleTargetFolder = configuration.get<string>("createCssModule.targetFolder", "");
 	const pathAlias = configuration.get<AliasFromUserOptions>("pathAlias", {});
 
 	return {
 		camelCase,
+		createCssModuleTargetFolder,
 		pathAlias
 	};
 }

@@ -41,14 +41,35 @@ const className = styles.container; // autocomplete and go-to-definition
 
 - Use "Go to Definition" (F12 / Cmd+Click) on a class name to jump to its CSS rule.
 - Rename class names to update usages across supported files.
+- Run "Enhanced CSS Modules: Create CSS Module" from a supported JS/TS/Astro file to create
+  `FileName.module.css` next to the open file, or choose another target folder.
+- Run "Enhanced CSS Modules: Toggle CSS Module" to switch between a JS/TS/Astro file and its matching
+  `*.module.css` file when one exists. Exact and kebab/Pascal name pairs are supported, for example
+  `ButtonPrimary.tsx` and `button-primary.module.css`.
 
 Configuration
 
 - `enhancedCssModules.camelCase` (boolean|string): Transform classnames in autocomplete suggestions. Default: `false`.
 - `enhancedCssModules.pathAlias` (object): Map path aliases for import resolution. Example:
+- `enhancedCssModules.createCssModule.targetFolder` (string): Default folder for new CSS module files. Leave empty
+  to create files next to the current file. Relative paths resolve from the workspace folder and `${workspaceFolder}`
+  is supported.
 
 ```json
-"enhancedCssModules.pathAlias": { "@/": "src/" }
+"enhancedCssModules.pathAlias": { "@/": "src/" },
+"enhancedCssModules.createCssModule.targetFolder": "${workspaceFolder}/src/styles"
+```
+
+Suggested keybinding
+
+The extension does not claim a default shortcut. Add your preferred binding in Keyboard Shortcuts JSON:
+
+```json
+{
+	"key": "cmd+alt+m",
+	"command": "enhancedCssModules.toggleCssModule",
+	"when": "editorTextFocus"
+}
 ```
 
 Rename behavior

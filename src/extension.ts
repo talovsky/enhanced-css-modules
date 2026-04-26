@@ -1,9 +1,11 @@
 import { type DocumentFilter, type ExtensionContext, languages } from "vscode";
 
 import { createCSSModuleCompletionProvider } from "./completion-provider";
+import { registerCreateCssModuleCommand } from "./create-css-module-command";
 import { createCSSModuleDefinitionProvider } from "./definition-provider";
 import { readOptions } from "./options";
 import { createCSSModuleRenameProvider } from "./rename-provider";
+import { registerToggleCssModuleCommand } from "./toggle-css-module-command";
 import { subscribeToTsConfigChanges } from "./utils/ts-alias";
 
 export function activate(context: ExtensionContext): void {
@@ -25,7 +27,9 @@ export function activate(context: ExtensionContext): void {
 	context.subscriptions.push(
 		languages.registerCompletionItemProvider(mode, createCSSModuleCompletionProvider(readOptions), ".", '"', "'"),
 		languages.registerDefinitionProvider(mode, createCSSModuleDefinitionProvider(readOptions)),
-		languages.registerRenameProvider(renameMode, createCSSModuleRenameProvider(readOptions))
+		languages.registerRenameProvider(renameMode, createCSSModuleRenameProvider(readOptions)),
+		registerCreateCssModuleCommand(),
+		registerToggleCssModuleCommand()
 	);
 
 	/**

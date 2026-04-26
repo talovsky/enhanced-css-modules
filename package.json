@@ -41,6 +41,18 @@
 		"*.{md,json}": "oxfmt"
 	},
 	"contributes": {
+		"commands": [
+			{
+				"command": "enhancedCssModules.createCssModule",
+				"title": "Create CSS Module",
+				"category": "Enhanced CSS Modules"
+			},
+			{
+				"command": "enhancedCssModules.toggleCssModule",
+				"title": "Toggle CSS Module",
+				"category": "Enhanced CSS Modules"
+			}
+		],
 		"configuration": {
 			"type": "object",
 			"title": "Enhanced CSS Modules Configuration",
@@ -57,8 +69,37 @@
 					"type": "object",
 					"default": {},
 					"description": "Path alias for import module."
+				},
+				"enhancedCssModules.createCssModule.targetFolder": {
+					"type": "string",
+					"default": "",
+					"description": "Default folder for newly created CSS module files. Leave empty to create files next to the current file. Relative paths resolve from the workspace folder and ${workspaceFolder} is supported."
 				}
 			}
+		},
+		"menus": {
+			"commandPalette": [
+				{
+					"command": "enhancedCssModules.createCssModule",
+					"when": "resourceScheme == file && (resourceLangId == astro || resourceLangId == javascript || resourceLangId == javascriptreact || resourceLangId == typescript || resourceLangId == typescriptreact)"
+				},
+				{
+					"command": "enhancedCssModules.toggleCssModule",
+					"when": "resourceScheme == file && (resourceLangId == astro || resourceLangId == css || resourceLangId == javascript || resourceLangId == javascriptreact || resourceLangId == typescript || resourceLangId == typescriptreact)"
+				}
+			],
+			"editor/context": [
+				{
+					"command": "enhancedCssModules.createCssModule",
+					"when": "resourceScheme == file && (resourceLangId == astro || resourceLangId == javascript || resourceLangId == javascriptreact || resourceLangId == typescript || resourceLangId == typescriptreact)",
+					"group": "navigation"
+				},
+				{
+					"command": "enhancedCssModules.toggleCssModule",
+					"when": "resourceScheme == file && (resourceLangId == astro || resourceLangId == css || resourceLangId == javascript || resourceLangId == javascriptreact || resourceLangId == typescript || resourceLangId == typescriptreact)",
+					"group": "navigation"
+				}
+			]
 		}
 	},
 	"activationEvents": [

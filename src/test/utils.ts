@@ -1,12 +1,10 @@
-import { ExtensionOptions } from "../options";
+import { type ExtensionOptions } from "../options";
 
 export function readOptions(overrides: Partial<ExtensionOptions> = {}): ExtensionOptions {
-	return Object.assign(
-		{},
-		{
-			camelCase: false,
-			pathAlias: {}
-		},
-		overrides
-	);
+	return {
+		camelCase: false,
+		createCssModuleTargetFolder: "",
+		pathAlias: {},
+		...overrides
+	};
 }
