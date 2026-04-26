@@ -74,7 +74,7 @@ export async function getTsAlias(workfolder?: vscode.WorkspaceFolder): Promise<A
 	}
 
 	const include = new vscode.RelativePattern(workfolder, "**/[tj]sconfig.json");
-	const exclude = new vscode.RelativePattern(workfolder, "**/node_modules/**");
+	const exclude = new vscode.RelativePattern(workfolder, "**/{node_modules,out,dist,build,.next,coverage}/**");
 	const files = await vscode.workspace.findFiles(include, exclude);
 
 	let mapping: AliasFromTsConfig = {};

@@ -27,7 +27,7 @@ export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvi
 		async provideDefinition(
 			document: TextDocument,
 			position: Position,
-			_token: CancellationToken
+			token?: CancellationToken
 		): Promise<Location | null> {
 			const { camelCase: camelCaseConfig, pathAlias } = resolveOptions(options);
 			const currentDir = path.dirname(document.uri.fsPath);
@@ -38,17 +38,18 @@ export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvi
 				return null;
 			}
 
-			const importPath = await resolveImportPath(
-				clickInfo.importModule,
-				currentDir,
-				await getRealPathAlias(pathAlias, document)
-			);
-			if (importPath === "") {
+			const realPathAlias = await getRealPathAlias(pathAlias, document);
+			if (token?.isCancellationRequested) {
+				return null;
+			}
+
+			const importPath = await resolveImportPath(clickInfo.importModule, currentDir, realPathAlias);
+			if (importPath === "" || token?.isCancellationRequested) {
 				return null;
 			}
 
 			const targetPosition = await getTargetPosition(importPath, clickInfo.targetClass, classTransformer);
-			if (targetPosition === null) {
+			if (targetPosition === null || token?.isCancellationRequested) {
 				return null;
 			}
 

@@ -98,7 +98,9 @@ export async function resolveImportPath(
 		return realPath;
 	}
 
-	const aliasPrefix = Object.keys(pathAlias).find(prefix => moduleName.startsWith(prefix));
+	const aliasPrefix = Object.keys(pathAlias)
+		.sort((a, b) => b.length - a.length)
+		.find(prefix => moduleName.startsWith(prefix));
 	if (aliasPrefix) {
 		const aliasPath = pathAlias[aliasPrefix];
 		return resolveAliasPath(moduleName, aliasPrefix, aliasPath);

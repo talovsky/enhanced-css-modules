@@ -1,6 +1,6 @@
 import path from "node:path";
 
-import { type TextDocument, type Position, CompletionItem, CompletionItemKind } from "vscode";
+import { type TextDocument, type Position, type CancellationToken, CompletionItem, CompletionItemKind } from "vscode";
 
 import { type ExtensionOptionsProvider, readOptions, resolveOptions } from "./options";
 import { getRealPathAlias } from "./path-alias";
@@ -28,7 +28,11 @@ function getWords(line: string, position: Position): string {
 
 export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvider = readOptions) {
 	return {
-		async provideCompletionItems(document: TextDocument, position: Position): Promise<CompletionItem[]> {
+		async provideCompletionItems(
+			document: TextDocument,
+			position: Position,
+			token?: CancellationToken
+		): Promise<CompletionItem[]> {
 			const currentOptions = resolveOptions(options);
 			const classTransformer = getClassTransformer(currentOptions.camelCase);
 			const pathAliasOptions = currentOptions.pathAlias;
@@ -42,7 +46,7 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 			}
 
 			const segments = words.split(splitRegex);
-			const obj = segments[0];
+			const [obj] = segments;
 			const field = segments.at(-1) || "";
 
 			const importModule = findImportModuleInDocument(document, obj);
@@ -50,16 +54,20 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 				return [];
 			}
 
-			const importPath = await resolveImportPath(
-				importModule,
-				currentDir,
-				await getRealPathAlias(pathAliasOptions, document)
-			);
-			if (importPath === "") {
+			const realPathAlias = await getRealPathAlias(pathAliasOptions, document);
+			if (token?.isCancellationRequested) {
+				return [];
+			}
+
+			const importPath = await resolveImportPath(importModule, currentDir, realPathAlias);
+			if (importPath === "" || token?.isCancellationRequested) {
 				return [];
 			}
 
 			const classNames = await getAllClassNames(importPath, field, classTransformer);
+			if (token?.isCancellationRequested) {
+				return [];
+			}
 
 			return classNames.map(_class => {
 				const name = classTransformer ? classTransformer(_class) : _class;

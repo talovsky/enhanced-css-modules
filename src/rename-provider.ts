@@ -76,16 +76,15 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 		const importModule = findImportModuleInDocument(document, usage.importName);
 		if (!importModule) return null;
 
-		const importPath = await resolveImportPath(
-			importModule,
-			path.dirname(document.uri.fsPath),
-			await getRealPathAlias(currentOptions.pathAlias, document)
-		);
+		const realPathAlias = await getRealPathAlias(currentOptions.pathAlias, document);
+		if (token.isCancellationRequested) return null;
+
+		const importPath = await resolveImportPath(importModule, path.dirname(document.uri.fsPath), realPathAlias);
 		if (!importPath || token.isCancellationRequested) return null;
 		if (isInNodeModules(importPath)) return null;
 
 		const cssClass = await findMatchingCssClass(importPath, usage.className, usage.syntax, classTransformer);
-		if (!cssClass) return null;
+		if (!cssClass || token.isCancellationRequested) return null;
 
 		return {
 			kind: "usage",

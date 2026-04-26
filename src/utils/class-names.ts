@@ -6,24 +6,32 @@ import { type ClassTransformer, dashesCamelCase, toCamelCase } from "./index";
 
 interface CachedCssClasses {
 	mtime: number;
+	checkedAt: number;
 	classes: CssClass[];
 }
 
 const MAX_CSS_CLASS_CACHE_ENTRIES = 200;
+const CSS_CLASS_CACHE_STAT_TTL_MS = 1000;
 const cssClassCache = new Map<string, CachedCssClasses>();
 
 export async function getCssClassesFromFile(filePath: string): Promise<CssClass[]> {
 	try {
+		const cached = cssClassCache.get(filePath);
+		const now = Date.now();
+		if (cached && now - cached.checkedAt < CSS_CLASS_CACHE_STAT_TTL_MS) {
+			rememberCssClasses(filePath, cached);
+			return cached.classes;
+		}
+
 		const stat = await fs.stat(filePath);
 		const mtime = stat.mtimeMs;
-		const cached = cssClassCache.get(filePath);
 		if (cached && cached.mtime === mtime) {
-			rememberCssClasses(filePath, cached);
+			rememberCssClasses(filePath, { ...cached, checkedAt: now });
 			return cached.classes;
 		}
 		const content = await fs.readFile(filePath, { encoding: "utf8" });
 		const classes = findCssClasses(content);
-		rememberCssClasses(filePath, { mtime, classes });
+		rememberCssClasses(filePath, { mtime, checkedAt: now, classes });
 		return classes;
 	} catch {
 		return [];
