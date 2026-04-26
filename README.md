@@ -49,7 +49,9 @@ const className = styles.container; // autocomplete and go-to-definition
 
 Configuration
 
-- `enhancedCssModules.camelCase` (boolean|string): Transform classnames in autocomplete suggestions. Default: `false`.
+- `enhancedCssModules.classNameExportConvention` (`"asIs" | "camelCase" | "dashes"`): CSS Modules class name
+  export convention. Use `camelCase` or `dashes` only when your build exposes transformed class names.
+  Default: `"asIs"`.
 - `enhancedCssModules.pathAlias` (object): Map path aliases for import resolution. Example:
 - `enhancedCssModules.createCssModule.targetFolder` (string): Default folder for new CSS module files. Leave empty
   to create files next to the current file. Relative paths resolve from the workspace folder and `${workspaceFolder}`
@@ -58,6 +60,7 @@ Configuration
   "Enhanced CSS Modules Performance" output channel. Default: `false`.
 
 ```json
+"enhancedCssModules.classNameExportConvention": "asIs",
 "enhancedCssModules.pathAlias": { "@/": "src/" },
 "enhancedCssModules.createCssModule.targetFolder": "${workspaceFolder}/src/styles",
 "enhancedCssModules.debugPerformance": false
@@ -77,13 +80,11 @@ The extension does not claim a default shortcut. Add your preferred binding in K
 
 Rename behavior
 
-- The extension shows and preserves the actual CSS selector names (for example
-  `class-name--active`) when you perform a rename — even if you access the
-  class in code using camelCase (for example `styles.classNameActive`).
-- During a rename operation the editor displays and updates the pretty CSS
-  class (kebab-case / BEM-style), and the corresponding JS/TS accessors are
-  updated to remain valid. This keeps your source code ergonomic while
-  preserving readable CSS in the stylesheet.
+- Rename follows `enhancedCssModules.classNameExportConvention`. By default (`"asIs"`), only exact CSS class
+  names are matched. Set `"camelCase"` or `"dashes"` if your CSS Modules build exposes transformed
+  class names in JS/TS.
+- Bracket syntax uses the raw CSS class name (for example `styles["class-name--active"]`). Dot syntax
+  uses the configured convention (for example `styles.classNameActive` with `"camelCase"`).
 - Current limitation: rename matching does not understand JavaScript or
   TypeScript scope shadowing. If you import a module as `styles` and later
   declare another local `styles` variable, rename may still treat
@@ -92,8 +93,8 @@ Rename behavior
 Example
 
 ```text
-Before: styles.classNameActive  -> CSS: .class-name--active
-After renaming to "is-active": CSS becomes .is-active and JS updates accordingly
+Before: styles.classNameActive  -> CSS: .class-name-active with "camelCase"
+After renaming to "is-active": CSS becomes .is-active and JS updates to styles.isActive
 ```
 
 Development

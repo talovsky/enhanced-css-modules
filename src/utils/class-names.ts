@@ -1,8 +1,8 @@
-import * as fs from "node:fs/promises";
+import fs from "node:fs/promises";
 
 import { Position, Range } from "vscode";
 
-import { type ClassTransformer, dashesCamelCase, toCamelCase } from "./index";
+import { type ClassTransformer } from "./index";
 import { measurePerformance } from "./performance";
 
 interface CachedCssClasses {
@@ -73,20 +73,11 @@ export function isClassNameMatch(
 	if (cssClassName === className) return true;
 	if (classTransformer && classTransformer(cssClassName) === className) return true;
 
-	return toCamelCase(cssClassName) === className || dashesCamelCase(cssClassName) === className;
+	return false;
 }
 
 export function getUsageNamesForCssName(cssName: string, classTransformer: ClassTransformer | null): string[] {
-	return [
-		...new Set(
-			[
-				classTransformer ? classTransformer(cssName) : null,
-				toCamelCase(cssName),
-				dashesCamelCase(cssName),
-				cssName
-			].filter(Boolean)
-		)
-	];
+	return [...new Set([classTransformer ? classTransformer(cssName) : null, cssName].filter(Boolean))];
 }
 
 function rememberCssClasses(filePath: string, cachedClasses: CachedCssClasses): void {

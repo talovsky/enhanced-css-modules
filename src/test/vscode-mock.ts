@@ -1,4 +1,4 @@
-import * as fs from "node:fs/promises";
+import fs from "node:fs/promises";
 
 export class Position {
 	constructor(

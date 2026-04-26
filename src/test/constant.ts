@@ -1,4 +1,4 @@
-import * as path from "node:path";
+import path from "node:path";
 
 export const ROOT_PATH = process.env.EXTENSION_ROOT || process.cwd();
 export const FIXTURES_PATH = path.join(ROOT_PATH, "src", "test", "fixtures");

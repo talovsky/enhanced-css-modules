@@ -1,6 +1,6 @@
 import { Position, TextDocument, CompletionItem, CompletionItemKind, TextEdit, Range } from "vscode";
 
-import { CamelCaseValues } from "../options";
+import type { ClassNameConvention } from "../options";
 import { getCssClassesFromFile } from "./class-names";
 
 export type ClassTransformer = (cls: string) => string;
@@ -47,10 +47,9 @@ export function toCamelCase(str: string): string {
 		.join("");
 }
 
-export function getClassTransformer(camelCaseConfig: CamelCaseValues): ClassTransformer | null {
-	switch (camelCaseConfig) {
-		case true:
-		case "true":
+export function getClassTransformer(classNameConvention: ClassNameConvention): ClassTransformer | null {
+	switch (classNameConvention) {
+		case "camelCase":
 			return toCamelCase;
 		case "dashes":
 			return dashesCamelCase;

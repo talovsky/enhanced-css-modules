@@ -1,4 +1,4 @@
-import * as path from "node:path";
+import path from "node:path";
 
 import { WORKSPACE_FOLDER_VARIABLE } from "./constants";
 

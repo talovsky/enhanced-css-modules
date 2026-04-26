@@ -13,6 +13,8 @@ export interface CssModuleUsage {
 
 export interface CssModuleUsageRange {
 	range: Range;
+	accessRange: Range;
+	operator?: "." | "?.";
 	syntax: UsageSyntax;
 }
 
@@ -83,18 +85,21 @@ export function findUsageRangesForClassNames(
 	const escapedImport = escapeRegExp(importName);
 	const classNameSet = new Set(classNames);
 	const usageRe = new RegExp(
-		`${escapedImport}\\s*(?:(?:\\??\\.\\s*([A-Za-z_$][\\w$]*)(?![-\\w$]))|(?:\\[\\s*(["'])([^"']+)\\2\\s*\\]))`,
+		`${escapedImport}\\s*(?:(\\??\\.)\\s*([A-Za-z_$][\\w$]*)(?![-\\w$])|(?:\\[\\s*(["'])([^"']+)\\3\\s*\\]))`,
 		"g"
 	);
 	let match: RegExpExecArray | null = null;
 
 	while ((match = usageRe.exec(text)) !== null) {
-		const foundName = match[1] || match[3];
+		const foundName = match[2] || match[4];
 		const classStart = match.index + match[0].lastIndexOf(foundName);
+		const accessStart = match[1] ? match.index + match[0].lastIndexOf(match[1]) : classStart;
 		if (classNameSet.has(foundName) && isCodeOffset(text, match.index)) {
 			ranges.push({
+				accessRange: new Range(document.positionAt(accessStart), document.positionAt(classStart + foundName.length)),
+				operator: match[1] as "." | "?." | undefined,
 				range: new Range(document.positionAt(classStart), document.positionAt(classStart + foundName.length)),
-				syntax: match[1] ? "dot" : "bracket"
+				syntax: match[2] ? "dot" : "bracket"
 			});
 		}
 	}

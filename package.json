@@ -57,13 +57,15 @@
 			"type": "object",
 			"title": "Enhanced CSS Modules Configuration",
 			"properties": {
-				"enhancedCssModules.camelCase": {
-					"type": [
-						"boolean",
-						"string"
+				"enhancedCssModules.classNameExportConvention": {
+					"type": "string",
+					"enum": [
+						"asIs",
+						"camelCase",
+						"dashes"
 					],
-					"default": false,
-					"description": "Transform classnames in autocomplete suggestions."
+					"default": "asIs",
+					"description": "CSS Modules class name export convention. Use camelCase or dashes only when your build exposes transformed class names."
 				},
 				"enhancedCssModules.pathAlias": {
 					"type": "object",

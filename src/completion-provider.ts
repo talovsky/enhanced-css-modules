@@ -38,7 +38,7 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 			return measurePerformance(
 				"completion",
 				async () => {
-					const classTransformer = getClassTransformer(currentOptions.camelCase);
+					const classTransformer = getClassTransformer(currentOptions.classNameExportConvention);
 					const pathAliasOptions = currentOptions.pathAlias;
 					const currentLine = getCurrentLine(document, position);
 					const currentDir = path.dirname(document.uri.fsPath);

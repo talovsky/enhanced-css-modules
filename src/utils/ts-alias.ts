@@ -1,7 +1,7 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import fs from "node:fs/promises";
+import path from "node:path";
 
-import * as JSON5 from "json5";
+import JSON5 from "json5";
 import * as vscode from "vscode";
 
 import { type AliasFromTsConfig } from "../options";

@@ -1,6 +1,6 @@
-import * as assert from "assert";
+import assert from "node:assert";
+import path from "node:path";
 import test from "node:test";
-import * as path from "path";
 
 import { WORKSPACE_FOLDER_VARIABLE } from "../../utils/constants";
 import { _removePathsSign, _getAliasFromTsConfigPaths } from "../../utils/ts-alias";

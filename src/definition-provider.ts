@@ -30,12 +30,12 @@ export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvi
 			position: Position,
 			token?: CancellationToken
 		): Promise<Location | null> {
-			const { camelCase: camelCaseConfig, debugPerformance, pathAlias } = resolveOptions(options);
+			const { classNameExportConvention, debugPerformance, pathAlias } = resolveOptions(options);
 			return measurePerformance(
 				"definition",
 				async () => {
 					const currentDir = path.dirname(document.uri.fsPath);
-					const classTransformer = getClassTransformer(camelCaseConfig);
+					const classTransformer = getClassTransformer(classNameExportConvention);
 
 					const clickInfo = getCssModuleClickInfo(document, position);
 					if (!clickInfo) {

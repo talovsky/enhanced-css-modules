@@ -1,5 +1,5 @@
-import * as fs from "node:fs/promises";
-import * as path from "node:path";
+import fs from "node:fs/promises";
+import path from "node:path";
 
 import {
 	type CancellationToken,
@@ -13,7 +13,7 @@ import {
 
 import { type ExtensionOptionsProvider, resolveOptions } from "./options";
 import { getRealPathAlias } from "./path-alias";
-import { type ClassTransformer, getClassTransformer, toCamelCase } from "./utils";
+import { type ClassTransformer, getClassTransformer } from "./utils";
 import { type CssClass, findCssClasses, getCssClassesFromFile, getUsageNamesForCssName } from "./utils/class-names";
 import { getSourcePathCandidates } from "./utils/create-css-module";
 import { findCssModuleImports, findImportModuleInDocument, resolveImportPath } from "./utils/path";
@@ -70,7 +70,7 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 		token: CancellationToken
 	): Promise<UsageTarget | null> {
 		const currentOptions = resolveOptions(options);
-		const classTransformer = getClassTransformer(currentOptions.camelCase);
+		const classTransformer = getClassTransformer(currentOptions.classNameExportConvention);
 		const usage = getCssModuleUsageAtPosition(document, position);
 		if (!usage) return null;
 
@@ -115,7 +115,7 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 		newName: string
 	): Promise<WorkspaceEdit | null> {
 		return createUsageRenameEdit(document, target, newName, {
-			classTransformer: getClassTransformer(resolveOptions(options).camelCase)
+			classTransformer: getClassTransformer(resolveOptions(options).classNameExportConvention)
 		});
 	}
 
@@ -126,7 +126,7 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 		token: CancellationToken
 	): Promise<WorkspaceEdit | null> {
 		return createCssRenameEdit(document, target, newName, token, {
-			classTransformer: getClassTransformer(resolveOptions(options).camelCase)
+			classTransformer: getClassTransformer(resolveOptions(options).classNameExportConvention)
 		});
 	}
 
@@ -255,9 +255,25 @@ function replaceUsageRanges(
 ): void {
 	const oldUsageNames = getUsageNamesForCssName(oldCssName, classTransformer);
 	for (const usage of findUsageRangesForClassNames(document, importName, oldUsageNames)) {
-		const replacement = usage.syntax === "bracket" ? names.cssName : names.usageName;
-		edit.replace(document.uri, usage.range, replacement);
+		const replacement = getUsageReplacement(usage, names);
+		edit.replace(document.uri, replacement.range, replacement.text);
 	}
+}
+
+function getUsageReplacement(
+	usage: ReturnType<typeof findUsageRangesForClassNames>[number],
+	names: RenameNames
+): { range: Range; text: string } {
+	if (usage.syntax === "bracket") {
+		return { range: usage.range, text: names.cssName };
+	}
+
+	if (isValidPropertyAccessName(names.usageName)) {
+		return { range: usage.range, text: names.usageName };
+	}
+
+	const prefix = usage.operator === "?." ? "?." : "";
+	return { range: usage.accessRange, text: `${prefix}["${names.cssName}"]` };
 }
 
 function normalizeRename(newName: string, classTransformer: ClassTransformer | null): RenameNames | null {
@@ -266,12 +282,16 @@ function normalizeRename(newName: string, classTransformer: ClassTransformer | n
 
 	return {
 		cssName: trimmedName,
-		usageName: classTransformer ? classTransformer(trimmedName) : toCamelCase(trimmedName)
+		usageName: classTransformer ? classTransformer(trimmedName) : trimmedName
 	};
 }
 
 function isValidClassName(className: string): boolean {
 	return /^[_A-Za-z-][_A-Za-z0-9-]*$/.test(className);
+}
+
+function isValidPropertyAccessName(className: string): boolean {
+	return /^[$_A-Za-z][$\w]*$/.test(className);
 }
 
 function isCssModuleDocument(document: TextDocument): boolean {

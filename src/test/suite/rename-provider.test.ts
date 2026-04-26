@@ -1,4 +1,4 @@
-import * as assert from "assert";
+import assert from "node:assert";
 import * as path from "node:path";
 import test from "node:test";
 
@@ -16,7 +16,7 @@ test("renames dot usages to camelCase when new CSS class is dashed", async () =>
 	const document = await vscode.workspace.openTextDocument(renameTsxFile);
 	const provider = createCSSModuleRenameProvider(
 		readOptions({
-			camelCase: true
+			classNameExportConvention: "camelCase"
 		})
 	);
 
@@ -34,11 +34,28 @@ test("renames dot usages to camelCase when new CSS class is dashed", async () =>
 	assert.deepStrictEqual(usageEdits.map(item => item.newText).sort(), ["icon-primary", "iconPrimary"]);
 });
 
+test("renames invalid asIs dot usages to bracket syntax", async () => {
+	const document = await vscode.workspace.openTextDocument(renameTsxFile);
+	const provider = createCSSModuleRenameProvider(readOptions());
+
+	const edit = await provider.provideRenameEdits(document, new vscode.Position(2, 4), "icon-primary", token);
+	assert.ok(edit);
+
+	const usageEdits = edit.entries().find(([uri]) => uri.fsPath === renameTsxFile)?.[1] || [];
+	assert.deepStrictEqual(
+		usageEdits.map(item => [item.range.start.line, item.range.start.character, item.newText]),
+		[
+			[2, 2, `["icon-primary"]`],
+			[3, 4, "icon-primary"]
+		]
+	);
+});
+
 test("does not rename usages inside strings or comments", async () => {
 	const document = await vscode.workspace.openTextDocument(renameTsxFile);
 	const provider = createCSSModuleRenameProvider(
 		readOptions({
-			camelCase: true
+			classNameExportConvention: "camelCase"
 		})
 	);
 

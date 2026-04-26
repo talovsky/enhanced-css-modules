@@ -1,10 +1,10 @@
-import * as assert from "assert";
+import assert from "node:assert";
 import test from "node:test";
 
 import * as vscode from "vscode";
 
 import { createCSSModuleCompletionProvider } from "../../completion-provider";
-import { CamelCaseValues } from "../../options";
+import type { ClassNameConvention } from "../../options";
 import {
 	SAMPLE_ASTRO_FILE,
 	SAMPLE_JS_FILE,
@@ -31,11 +31,15 @@ function testCompletion(position: vscode.Position, itemCount: number, fixtureFil
 	});
 }
 
-function testCompletionWithCase(position: vscode.Position, camelCaseConfig: CamelCaseValues, assertions: Array<any>) {
+function testCompletionWithConvention(
+	position: vscode.Position,
+	classNameExportConvention: ClassNameConvention,
+	assertions: any[]
+) {
 	return vscode.workspace.openTextDocument(uri).then(text => {
 		const provider = createCSSModuleCompletionProvider(
 			readOptions({
-				camelCase: camelCaseConfig
+				classNameExportConvention
 			})
 		);
 		return provider.provideCompletionItems(text, position).then(items => {
@@ -121,10 +125,10 @@ test("test .stylus extname stylus completion", () => {
 	});
 });
 
-test("test camelCase:false style completion", () => {
+test("test asIs convention style completion", () => {
 	const position = new vscode.Position(5, 21);
 	return Promise.resolve(
-		testCompletionWithCase(position, false, [
+		testCompletionWithConvention(position, "asIs", [
 			items => assert.strictEqual(1, items.length),
 			items => assert.strictEqual("sidebar_without-header", items[0].label)
 		])
@@ -133,10 +137,10 @@ test("test camelCase:false style completion", () => {
 	});
 });
 
-test("test camelCase:false style and kebab-case completion", () => {
+test("test asIs convention and kebab-case completion", () => {
 	const position = new vscode.Position(5, 21);
 	return Promise.resolve(
-		testCompletionWithCase(position, false, [
+		testCompletionWithConvention(position, "asIs", [
 			items => assert.strictEqual(1, items.length),
 			items => assert.strictEqual(items[0].insertText, `["sidebar_without-header"]`)
 		])
@@ -145,10 +149,10 @@ test("test camelCase:false style and kebab-case completion", () => {
 	});
 });
 
-test("test camelCase:true style completion", () => {
+test("test camelCase convention style completion", () => {
 	const position = new vscode.Position(5, 21);
 	return Promise.resolve(
-		testCompletionWithCase(position, true, [
+		testCompletionWithConvention(position, "camelCase", [
 			items => assert.strictEqual(1, items.length),
 			items => assert.strictEqual("sidebarWithoutHeader", items[0].label)
 		])
@@ -157,10 +161,10 @@ test("test camelCase:true style completion", () => {
 	});
 });
 
-test("test camelCase:true filters by typed transformed prefix", () => {
+test("test camelCase convention filters by typed transformed prefix", () => {
 	const position = new vscode.Position(6, 28);
 	return Promise.resolve(
-		testCompletionWithCase(position, true, [
+		testCompletionWithConvention(position, "camelCase", [
 			items => assert.strictEqual(1, items.length),
 			items => assert.strictEqual("sidebarWithoutHeader", items[0].label)
 		])
@@ -169,10 +173,10 @@ test("test camelCase:true filters by typed transformed prefix", () => {
 	});
 });
 
-test("test camelCase:dashes style completion", () => {
+test("test dashes convention style completion", () => {
 	const position = new vscode.Position(5, 21);
 	return Promise.resolve(
-		testCompletionWithCase(position, "dashes", [
+		testCompletionWithConvention(position, "dashes", [
 			items => assert.strictEqual(1, items.length),
 			items => assert.strictEqual("sidebar_withoutHeader", items[0].label)
 		])
