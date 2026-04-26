@@ -151,6 +151,8 @@ export const workspace = {
 	createFileSystemWatcher() {
 		return {
 			onDidChange() {},
+			onDidCreate() {},
+			onDidDelete() {},
 			dispose() {}
 		};
 	}

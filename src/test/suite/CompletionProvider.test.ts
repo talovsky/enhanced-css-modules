@@ -157,6 +157,18 @@ test("test camelCase:true style completion", () => {
 	});
 });
 
+test("test camelCase:true filters by typed transformed prefix", () => {
+	const position = new vscode.Position(6, 28);
+	return Promise.resolve(
+		testCompletionWithCase(position, true, [
+			items => assert.strictEqual(1, items.length),
+			items => assert.strictEqual("sidebarWithoutHeader", items[0].label)
+		])
+	).catch(err => {
+		assert.ok(false, `error in OpenTextDocument ${err}`);
+	});
+});
+
 test("test camelCase:dashes style completion", () => {
 	const position = new vscode.Position(5, 21);
 	return Promise.resolve(

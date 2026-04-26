@@ -41,6 +41,10 @@ export function findCssModuleImports(text: string): CssModuleImport[] {
 	return imports;
 }
 
+export function findImportModuleFromImports(imports: CssModuleImport[], key: string): string {
+	return imports.find(item => item.importName === key)?.moduleName || "";
+}
+
 async function resolveAliasPath(
 	moduleName: string,
 	aliasPrefix: string,
@@ -80,5 +84,5 @@ export async function resolveImportPath(
 }
 
 export function findImportModule(text: string, key: string): string {
-	return findCssModuleImports(text).find(item => item.importName === key)?.moduleName || "";
+	return findImportModuleFromImports(findCssModuleImports(text), key);
 }

@@ -3,7 +3,7 @@ import { type DocumentFilter, type ExtensionContext, languages } from "vscode";
 import { createCSSModuleCompletionProvider } from "./completion-provider";
 import { registerCreateCssModuleCommand } from "./create-css-module-command";
 import { createCSSModuleDefinitionProvider } from "./definition-provider";
-import { readOptions } from "./options";
+import { readOptions, subscribeToConfigChanges } from "./options";
 import { createCSSModuleRenameProvider } from "./rename-provider";
 import { registerToggleCssModuleCommand } from "./toggle-css-module-command";
 import { subscribeToTsConfigChanges } from "./utils/ts-alias";
@@ -32,10 +32,7 @@ export function activate(context: ExtensionContext): void {
 		registerToggleCssModuleCommand()
 	);
 
-	/**
-	 * Subscribe to the ts config changes
-	 */
-	context.subscriptions.push(...subscribeToTsConfigChanges());
+	context.subscriptions.push(subscribeToConfigChanges(), ...subscribeToTsConfigChanges());
 }
 
 export function deactivate(): void {}

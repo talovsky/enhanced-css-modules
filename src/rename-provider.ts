@@ -14,7 +14,8 @@ import {
 import { type ExtensionOptionsProvider, resolveOptions } from "./options";
 import { getRealPathAlias } from "./path-alias";
 import { type ClassTransformer, getClassTransformer, toCamelCase } from "./utils";
-import { type CssClass, findCssClasses, getUsageNamesForCssName } from "./utils/class-names";
+import { type CssClass, findCssClasses, getCssClassesFromFile, getUsageNamesForCssName } from "./utils/class-names";
+import { getSourcePathCandidates } from "./utils/create-css-module";
 import { findCssModuleImports, findImportModule, resolveImportPath } from "./utils/path";
 import { type CssModuleUsage, findUsageRanges, getCssModuleUsageAtPosition } from "./utils/usages";
 
@@ -168,12 +169,14 @@ async function findMatchingCssClass(
 	syntax: CssModuleUsage["syntax"],
 	classTransformer: ClassTransformer | null
 ): Promise<CssClass | null> {
-	const content = await fs.readFile(filePath, { encoding: "utf8" });
-	return findCssClasses(content).find(cssClass => {
-		if (cssClass.name === className) return true;
-		if (syntax === "bracket") return false;
-		return getUsageNamesForCssName(cssClass.name, classTransformer).includes(className);
-	});
+	const classes = await getCssClassesFromFile(filePath);
+	return (
+		classes.find(cssClass => {
+			if (cssClass.name === className) return true;
+			if (syntax === "bracket") return false;
+			return getUsageNamesForCssName(cssClass.name, classTransformer).includes(className);
+		}) ?? null
+	);
 }
 
 async function createUsageRenameEdit(
@@ -264,40 +267,38 @@ function isCssModuleDocument(document: TextDocument): boolean {
 	return /\.(?:module\.)?(?:css|scss|sass|less|styl|stylus)$/.test(document.uri.fsPath);
 }
 
+function isInNodeModules(fsPath: string): boolean {
+	return fsPath.split(path.sep).includes("node_modules");
+}
+
 async function findCssModuleImporters(
 	cssUri: Uri,
 	token: CancellationToken
 ): Promise<{ uri: Uri; importName: string }[]> {
-	const files = await workspace.findFiles(
-		"**/*.{js,jsx,ts,tsx,astro}",
-		"**/{node_modules,out,dist}/**",
-		undefined,
-		token
-	);
+	const cssDir = path.dirname(cssUri.fsPath);
+	const cssNormalized = path.normalize(cssUri.fsPath);
+	const candidates = getSourcePathCandidates(cssUri.fsPath, [cssDir]);
 	const importers: { uri: Uri; importName: string }[] = [];
 
-	for (const uri of files) {
+	for (const candidatePath of candidates) {
 		if (token.isCancellationRequested) break;
-		if (!isInNodeModules(uri.fsPath)) {
-			const document = await workspace.openTextDocument(uri);
-			const dirname = path.dirname(uri.fsPath);
-			for (const item of findCssModuleImports(document.getText())) {
-				const resolvedPath = path.resolve(dirname, item.moduleName);
-				if (path.normalize(resolvedPath) === path.normalize(cssUri.fsPath)) {
-					importers.push({
-						uri,
-						importName: item.importName
-					});
-				}
+
+		let content: string;
+		try {
+			content = await fs.readFile(candidatePath, { encoding: "utf8" });
+		} catch {
+			continue;
+		}
+
+		const dirname = path.dirname(candidatePath);
+		for (const item of findCssModuleImports(content)) {
+			if (path.normalize(path.resolve(dirname, item.moduleName)) === cssNormalized) {
+				importers.push({ uri: Uri.file(candidatePath), importName: item.importName });
 			}
 		}
 	}
 
 	return importers;
-}
-
-function isInNodeModules(fsPath: string): boolean {
-	return fsPath.split(path.sep).includes("node_modules");
 }
 
 export default createCSSModuleRenameProvider;

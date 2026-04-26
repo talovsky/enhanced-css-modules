@@ -1,4 +1,4 @@
-import { workspace } from "vscode";
+import { type Disposable, workspace } from "vscode";
 
 import { EXT_NAME } from "./utils/constants";
 
@@ -19,15 +19,27 @@ export function resolveOptions(options: ExtensionOptionsProvider): ExtensionOpti
 	return typeof options === "function" ? options() : options;
 }
 
-export function readOptions(): ExtensionOptions {
-	const configuration = workspace.getConfiguration(EXT_NAME);
-	const camelCase = configuration.get<CamelCaseValues>("camelCase", false);
-	const createCssModuleTargetFolder = configuration.get<string>("createCssModule.targetFolder", "");
-	const pathAlias = configuration.get<AliasFromUserOptions>("pathAlias", {});
+let cachedOptions: ExtensionOptions | null = null;
 
-	return {
-		camelCase,
-		createCssModuleTargetFolder,
-		pathAlias
+export function readOptions(): ExtensionOptions {
+	if (cachedOptions) {
+		return cachedOptions;
+	}
+
+	const configuration = workspace.getConfiguration(EXT_NAME);
+	cachedOptions = {
+		camelCase: configuration.get<CamelCaseValues>("camelCase", false),
+		createCssModuleTargetFolder: configuration.get<string>("createCssModule.targetFolder", ""),
+		pathAlias: configuration.get<AliasFromUserOptions>("pathAlias", {})
 	};
+
+	return cachedOptions;
+}
+
+export function subscribeToConfigChanges(): Disposable {
+	return workspace.onDidChangeConfiguration(event => {
+		if (event.affectsConfiguration(EXT_NAME)) {
+			cachedOptions = null;
+		}
+	});
 }

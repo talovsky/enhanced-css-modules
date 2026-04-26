@@ -103,8 +103,9 @@ async function findSourceFileInWorkspace(cssModuleUri: Uri): Promise<Uri | undef
 		return undefined;
 	}
 
+	const exclude = new RelativePattern(workspaceFolder, "**/node_modules/**");
 	for (const fileName of getSourceFileNameCandidates(cssModuleUri.fsPath)) {
-		const matches = await workspace.findFiles(new RelativePattern(workspaceFolder, `**/${fileName}`));
+		const matches = await workspace.findFiles(new RelativePattern(workspaceFolder, `**/${fileName}`), exclude, 1);
 		if (matches[0]) {
 			return matches[0];
 		}

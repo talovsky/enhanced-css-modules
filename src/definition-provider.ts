@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 
 import { type TextDocument, Position, type CancellationToken, Location, Uri } from "vscode";
@@ -6,7 +5,7 @@ import { type TextDocument, Position, type CancellationToken, Location, Uri } fr
 import { type ExtensionOptionsProvider, resolveOptions } from "./options";
 import { getRealPathAlias } from "./path-alias";
 import { getClassTransformer, type ClassTransformer } from "./utils";
-import { findCssClassPosition } from "./utils/class-names";
+import { getCssClassesFromFile, isClassNameMatch } from "./utils/class-names";
 import { resolveImportPath } from "./utils/path";
 import { getCssModuleClickInfo } from "./utils/usages";
 
@@ -19,8 +18,8 @@ async function getTargetPosition(
 		return new Position(0, 0);
 	}
 
-	const content = await fs.readFile(filePath, { encoding: "utf8" });
-	return findCssClassPosition(content, targetClass, classTransformer);
+	const classes = await getCssClassesFromFile(filePath);
+	return classes.find(c => isClassNameMatch(c.name, targetClass, classTransformer))?.range.start ?? null;
 }
 
 export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvider) {

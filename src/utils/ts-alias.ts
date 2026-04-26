@@ -11,7 +11,11 @@ type TsConfigPaths = Record<string, string[]>;
 const cachedMappings = new Map<string, AliasFromTsConfig>();
 
 function invalidateCache(workfolder: vscode.WorkspaceFolder) {
-	cachedMappings.delete(workfolder.name);
+	cachedMappings.delete(getWorkspaceFolderCacheKey(workfolder));
+}
+
+function getWorkspaceFolderCacheKey(workfolder: vscode.WorkspaceFolder): string {
+	return workfolder.uri.fsPath;
 }
 
 export function _removePathsSign(paths: TsConfigPaths): TsConfigPaths {
@@ -27,17 +31,20 @@ export function _removePathsSign(paths: TsConfigPaths): TsConfigPaths {
 	return formatPaths;
 }
 
-export function _getAliasFromTsConfigPaths(tsconfig: {
-	compilerOptions: {
-		baseUrl: string;
-		paths: TsConfigPaths;
-	};
-}): AliasFromTsConfig | null {
+export function _getAliasFromTsConfigPaths(
+	tsconfig: {
+		compilerOptions: {
+			baseUrl: string;
+			paths: TsConfigPaths;
+		};
+	},
+	configFolderPath = WORKSPACE_FOLDER_VARIABLE
+): AliasFromTsConfig | null {
 	function removeTrailingSlash(str: string) {
 		return str.endsWith("/") ? str.slice(0, -1) : str;
 	}
 	function joinPath(p: string) {
-		return path.join(WORKSPACE_FOLDER_VARIABLE, baseUrl, removeTrailingSlash(p));
+		return path.join(configFolderPath, baseUrl, removeTrailingSlash(p));
 	}
 
 	let paths = tsconfig?.compilerOptions?.paths;
@@ -60,39 +67,42 @@ export async function getTsAlias(workfolder?: vscode.WorkspaceFolder): Promise<A
 		return {};
 	}
 
-	const cachedMapping = cachedMappings.get(workfolder.name);
+	const cacheKey = getWorkspaceFolderCacheKey(workfolder);
+	const cachedMapping = cachedMappings.get(cacheKey);
 	if (cachedMapping) {
 		return cachedMapping;
 	}
 
-	const include = new vscode.RelativePattern(workfolder, "[tj]sconfig.json");
+	const include = new vscode.RelativePattern(workfolder, "**/[tj]sconfig.json");
 	const exclude = new vscode.RelativePattern(workfolder, "**/node_modules/**");
 	const files = await vscode.workspace.findFiles(include, exclude);
 
 	let mapping: AliasFromTsConfig = {};
-	for (let i = 0; i < files.length; i++) {
+	for (const file of files) {
 		try {
-			const fileContent = await fs.readFile(files[i].fsPath, { encoding: "utf8" });
+			const fileContent = await fs.readFile(file.fsPath, { encoding: "utf8" });
 			const configFile = JSON5.parse(fileContent);
-			const aliasFromPaths = _getAliasFromTsConfigPaths(configFile);
+			const aliasFromPaths = _getAliasFromTsConfigPaths(configFile, path.dirname(file.fsPath));
 			if (aliasFromPaths) {
 				mapping = { ...mapping, ...aliasFromPaths };
 			}
 		} catch {
-			console.error(`Error parsing tsconfig.json: ${files[i].fsPath}`);
+			console.error(`Error parsing tsconfig.json: ${file.fsPath}`);
 		}
 	}
 
-	cachedMappings.set(workfolder.name, mapping);
+	cachedMappings.set(cacheKey, mapping);
 	return mapping;
 }
 
 export function subscribeToTsConfigChanges(): vscode.Disposable[] {
 	const disposables: vscode.Disposable[] = [];
 	for (const workfolder of vscode.workspace.workspaceFolders || []) {
-		const pattern = new vscode.RelativePattern(workfolder, "[tj]sconfig.json");
+		const pattern = new vscode.RelativePattern(workfolder, "**/[tj]sconfig.json");
 		const fileWatcher = vscode.workspace.createFileSystemWatcher(pattern);
 		fileWatcher.onDidChange(() => invalidateCache(workfolder));
+		fileWatcher.onDidCreate(() => invalidateCache(workfolder));
+		fileWatcher.onDidDelete(() => invalidateCache(workfolder));
 		disposables.push(fileWatcher);
 	}
 	return disposables;

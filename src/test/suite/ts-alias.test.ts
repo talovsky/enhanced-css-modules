@@ -70,6 +70,25 @@ test("_getAliasFromTsConfigPaths: baseUrl is sub folder", () => {
 	);
 });
 
+test("_getAliasFromTsConfigPaths: baseUrl resolves from config folder", () => {
+	assert.deepStrictEqual(
+		_getAliasFromTsConfigPaths(
+			{
+				compilerOptions: {
+					baseUrl: "src",
+					paths: {
+						styles: ["styles"]
+					}
+				}
+			},
+			path.join(WORKSPACE_FOLDER_VARIABLE, "packages", "app")
+		),
+		{
+			styles: [path.join(WORKSPACE_FOLDER_VARIABLE, "packages", "app", "src", "styles")]
+		}
+	);
+});
+
 test("_getAliasFromTsConfigPaths: baseUrl is sub folder with prefix", () => {
 	assert.deepStrictEqual(
 		_getAliasFromTsConfigPaths({

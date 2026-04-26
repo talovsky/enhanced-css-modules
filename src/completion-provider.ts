@@ -11,24 +11,19 @@ import {
 	isKebabCaseClassName,
 	createBracketCompletionItem
 } from "./utils";
-import { findImportModule, resolveImportPath } from "./utils/path";
+import {
+	type CssModuleImport,
+	findCssModuleImports,
+	findImportModuleFromImports,
+	resolveImportPath
+} from "./utils/path";
 
-// check if current character or last character is .
-// or if current character is " or ' after a [
-function isTrigger(line: string, position: Position): boolean {
-	const i = position.character - 1;
-	const isDotSyntax = line[i] === "." || (i > 1 && line[i - 1] === ".");
-	if (isDotSyntax) {
-		return true;
-	}
-
-	const isBracketSyntax = line[i - 1] === "[" && (line[i] === '"' || line[i] === "'");
-	if (isBracketSyntax) {
-		return true;
-	}
-
-	return false;
+interface CachedDocumentImports {
+	version: number;
+	imports: CssModuleImport[];
 }
+
+const documentImportCache = new WeakMap<TextDocument, CachedDocumentImports>();
 
 function getWords(line: string, position: Position): string {
 	const text = line.slice(0, position.character);
@@ -43,6 +38,18 @@ function getWords(line: string, position: Position): string {
 	return convertText.slice(index);
 }
 
+function getImportModule(document: TextDocument, importName: string): string {
+	const version = document.version ?? -1;
+	const cached = documentImportCache.get(document);
+	if (cached && cached.version === version) {
+		return findImportModuleFromImports(cached.imports, importName);
+	}
+
+	const imports = findCssModuleImports(document.getText());
+	documentImportCache.set(document, { version, imports });
+	return findImportModuleFromImports(imports, importName);
+}
+
 export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvider = readOptions) {
 	return {
 		async provideCompletionItems(document: TextDocument, position: Position): Promise<CompletionItem[]> {
@@ -52,19 +59,21 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 			const currentLine = getCurrentLine(document, position);
 			const currentDir = path.dirname(document.uri.fsPath);
 
-			if (!isTrigger(currentLine, position)) {
-				return [];
-			}
-
 			const splitRegex = /\.|\["|\['/;
 			const words = getWords(currentLine, position);
 			if (words === "" || !splitRegex.test(words)) {
 				return [];
 			}
 
-			const [obj, field] = words.split(splitRegex);
+			const segments = words.split(splitRegex);
+			const obj = segments[0];
+			const field = segments.at(-1) || "";
 
-			const importModule = findImportModule(document.getText(), obj);
+			const importModule = getImportModule(document, obj);
+			if (importModule === "") {
+				return [];
+			}
+
 			const importPath = await resolveImportPath(
 				importModule,
 				currentDir,
@@ -74,7 +83,7 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 				return [];
 			}
 
-			const classNames = await getAllClassNames(importPath, field);
+			const classNames = await getAllClassNames(importPath, field, classTransformer);
 
 			return classNames.map(_class => {
 				const name = classTransformer ? classTransformer(_class) : _class;
