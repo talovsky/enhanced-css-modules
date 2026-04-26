@@ -6,6 +6,7 @@ import * as vscode from "vscode";
 
 import { type AliasFromTsConfig } from "../options";
 import { WORKSPACE_FOLDER_VARIABLE } from "./constants";
+import { measurePerformance } from "./performance";
 
 type TsConfigPaths = Record<string, string[]>;
 const cachedMappings = new Map<string, AliasFromTsConfig>();
@@ -73,26 +74,28 @@ export async function getTsAlias(workfolder?: vscode.WorkspaceFolder): Promise<A
 		return cachedMapping;
 	}
 
-	const include = new vscode.RelativePattern(workfolder, "**/[tj]sconfig.json");
-	const exclude = new vscode.RelativePattern(workfolder, "**/{node_modules,out,dist,build,.next,coverage}/**");
-	const files = await vscode.workspace.findFiles(include, exclude);
+	return measurePerformance(`tsconfig aliases ${workfolder.name}`, async () => {
+		const include = new vscode.RelativePattern(workfolder, "**/[tj]sconfig.json");
+		const exclude = new vscode.RelativePattern(workfolder, "**/{node_modules,out,dist,build,.next,coverage}/**");
+		const files = await vscode.workspace.findFiles(include, exclude);
 
-	let mapping: AliasFromTsConfig = {};
-	for (const file of files) {
-		try {
-			const fileContent = await fs.readFile(file.fsPath, { encoding: "utf8" });
-			const configFile = JSON5.parse(fileContent);
-			const aliasFromPaths = _getAliasFromTsConfigPaths(configFile, path.dirname(file.fsPath));
-			if (aliasFromPaths) {
-				mapping = { ...mapping, ...aliasFromPaths };
+		let mapping: AliasFromTsConfig = {};
+		for (const file of files) {
+			try {
+				const fileContent = await fs.readFile(file.fsPath, { encoding: "utf8" });
+				const configFile = JSON5.parse(fileContent);
+				const aliasFromPaths = _getAliasFromTsConfigPaths(configFile, path.dirname(file.fsPath));
+				if (aliasFromPaths) {
+					mapping = { ...mapping, ...aliasFromPaths };
+				}
+			} catch {
+				console.error(`Error parsing tsconfig.json: ${file.fsPath}`);
 			}
-		} catch {
-			console.error(`Error parsing tsconfig.json: ${file.fsPath}`);
 		}
-	}
 
-	cachedMappings.set(cacheKey, mapping);
-	return mapping;
+		cachedMappings.set(cacheKey, mapping);
+		return mapping;
+	});
 }
 
 export function subscribeToTsConfigChanges(): vscode.Disposable[] {

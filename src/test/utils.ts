@@ -4,6 +4,7 @@ export function readOptions(overrides: Partial<ExtensionOptions> = {}): Extensio
 	return {
 		camelCase: false,
 		createCssModuleTargetFolder: "",
+		debugPerformance: false,
 		pathAlias: {},
 		...overrides
 	};

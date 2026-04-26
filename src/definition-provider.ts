@@ -7,6 +7,7 @@ import { getRealPathAlias } from "./path-alias";
 import { getClassTransformer, type ClassTransformer } from "./utils";
 import { getCssClassesFromFile, isClassNameMatch } from "./utils/class-names";
 import { resolveImportPath } from "./utils/path";
+import { measurePerformance } from "./utils/performance";
 import { getCssModuleClickInfo } from "./utils/usages";
 
 async function getTargetPosition(
@@ -29,31 +30,37 @@ export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvi
 			position: Position,
 			token?: CancellationToken
 		): Promise<Location | null> {
-			const { camelCase: camelCaseConfig, pathAlias } = resolveOptions(options);
-			const currentDir = path.dirname(document.uri.fsPath);
-			const classTransformer = getClassTransformer(camelCaseConfig);
+			const { camelCase: camelCaseConfig, debugPerformance, pathAlias } = resolveOptions(options);
+			return measurePerformance(
+				"definition",
+				async () => {
+					const currentDir = path.dirname(document.uri.fsPath);
+					const classTransformer = getClassTransformer(camelCaseConfig);
 
-			const clickInfo = getCssModuleClickInfo(document, position);
-			if (!clickInfo) {
-				return null;
-			}
+					const clickInfo = getCssModuleClickInfo(document, position);
+					if (!clickInfo) {
+						return null;
+					}
 
-			const realPathAlias = await getRealPathAlias(pathAlias, document);
-			if (token?.isCancellationRequested) {
-				return null;
-			}
+					const realPathAlias = await getRealPathAlias(pathAlias, document);
+					if (token?.isCancellationRequested) {
+						return null;
+					}
 
-			const importPath = await resolveImportPath(clickInfo.importModule, currentDir, realPathAlias);
-			if (importPath === "" || token?.isCancellationRequested) {
-				return null;
-			}
+					const importPath = await resolveImportPath(clickInfo.importModule, currentDir, realPathAlias);
+					if (importPath === "" || token?.isCancellationRequested) {
+						return null;
+					}
 
-			const targetPosition = await getTargetPosition(importPath, clickInfo.targetClass, classTransformer);
-			if (targetPosition === null || token?.isCancellationRequested) {
-				return null;
-			}
+					const targetPosition = await getTargetPosition(importPath, clickInfo.targetClass, classTransformer);
+					if (targetPosition === null || token?.isCancellationRequested) {
+						return null;
+					}
 
-			return new Location(Uri.file(importPath), targetPosition);
+					return new Location(Uri.file(importPath), targetPosition);
+				},
+				debugPerformance
+			);
 		}
 	};
 }

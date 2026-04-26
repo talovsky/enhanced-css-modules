@@ -54,10 +54,13 @@ Configuration
 - `enhancedCssModules.createCssModule.targetFolder` (string): Default folder for new CSS module files. Leave empty
   to create files next to the current file. Relative paths resolve from the workspace folder and `${workspaceFolder}`
   is supported.
+- `enhancedCssModules.debugPerformance` (boolean): Log provider timing information to the
+  "Enhanced CSS Modules Performance" output channel. Default: `false`.
 
 ```json
 "enhancedCssModules.pathAlias": { "@/": "src/" },
-"enhancedCssModules.createCssModule.targetFolder": "${workspaceFolder}/src/styles"
+"enhancedCssModules.createCssModule.targetFolder": "${workspaceFolder}/src/styles",
+"enhancedCssModules.debugPerformance": false
 ```
 
 Suggested keybinding

@@ -3,6 +3,7 @@ import * as fs from "node:fs/promises";
 import { Position, Range } from "vscode";
 
 import { type ClassTransformer, dashesCamelCase, toCamelCase } from "./index";
+import { measurePerformance } from "./performance";
 
 interface CachedCssClasses {
 	mtime: number;
@@ -15,27 +16,29 @@ const CSS_CLASS_CACHE_STAT_TTL_MS = 1000;
 const cssClassCache = new Map<string, CachedCssClasses>();
 
 export async function getCssClassesFromFile(filePath: string): Promise<CssClass[]> {
-	try {
-		const cached = cssClassCache.get(filePath);
-		const now = Date.now();
-		if (cached && now - cached.checkedAt < CSS_CLASS_CACHE_STAT_TTL_MS) {
-			rememberCssClasses(filePath, cached);
-			return cached.classes;
-		}
+	return measurePerformance(`css classes ${filePath}`, async () => {
+		try {
+			const cached = cssClassCache.get(filePath);
+			const now = Date.now();
+			if (cached && now - cached.checkedAt < CSS_CLASS_CACHE_STAT_TTL_MS) {
+				rememberCssClasses(filePath, cached);
+				return cached.classes;
+			}
 
-		const stat = await fs.stat(filePath);
-		const mtime = stat.mtimeMs;
-		if (cached && cached.mtime === mtime) {
-			rememberCssClasses(filePath, { ...cached, checkedAt: now });
-			return cached.classes;
+			const stat = await fs.stat(filePath);
+			const mtime = stat.mtimeMs;
+			if (cached && cached.mtime === mtime) {
+				rememberCssClasses(filePath, { ...cached, checkedAt: now });
+				return cached.classes;
+			}
+			const content = await fs.readFile(filePath, { encoding: "utf8" });
+			const classes = findCssClasses(content);
+			rememberCssClasses(filePath, { mtime, checkedAt: now, classes });
+			return classes;
+		} catch {
+			return [];
 		}
-		const content = await fs.readFile(filePath, { encoding: "utf8" });
-		const classes = findCssClasses(content);
-		rememberCssClasses(filePath, { mtime, checkedAt: now, classes });
-		return classes;
-	} catch {
-		return [];
-	}
+	});
 }
 
 export interface CssClass {

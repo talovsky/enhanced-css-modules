@@ -74,6 +74,11 @@
 					"type": "string",
 					"default": "",
 					"description": "Default folder for newly created CSS module files. Leave empty to create files next to the current file. Relative paths resolve from the workspace folder and ${workspaceFolder} is supported."
+				},
+				"enhancedCssModules.debugPerformance": {
+					"type": "boolean",
+					"default": false,
+					"description": "Log CSS Modules provider timing information to the extension host console."
 				}
 			}
 		},

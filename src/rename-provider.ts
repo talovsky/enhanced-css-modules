@@ -17,6 +17,7 @@ import { type ClassTransformer, getClassTransformer, toCamelCase } from "./utils
 import { type CssClass, findCssClasses, getCssClassesFromFile, getUsageNamesForCssName } from "./utils/class-names";
 import { getSourcePathCandidates } from "./utils/create-css-module";
 import { findCssModuleImports, findImportModuleInDocument, resolveImportPath } from "./utils/path";
+import { measurePerformance } from "./utils/performance";
 import { type CssModuleUsage, findUsageRangesForClassNames, getCssModuleUsageAtPosition } from "./utils/usages";
 
 interface UsageTarget {
@@ -135,13 +136,19 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 			position: Position,
 			token: CancellationToken
 		): Promise<Range | { range: Range; placeholder: string }> {
-			const target = await getRenameTarget(document, position, token);
-			if (!target) return null;
+			return measurePerformance(
+				"rename.prepare",
+				async () => {
+					const target = await getRenameTarget(document, position, token);
+					if (!target) return null;
 
-			return {
-				range: target.classRange,
-				placeholder: target.kind === "usage" ? target.cssName : target.className
-			};
+					return {
+						range: target.classRange,
+						placeholder: target.kind === "usage" ? target.cssName : target.className
+					};
+				},
+				resolveOptions(options).debugPerformance
+			);
 		},
 
 		async provideRenameEdits(
@@ -150,14 +157,20 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 			newName: string,
 			token: CancellationToken
 		): Promise<WorkspaceEdit> {
-			const target = await getRenameTarget(document, position, token);
-			if (!target) return null;
+			return measurePerformance(
+				"rename.edits",
+				async () => {
+					const target = await getRenameTarget(document, position, token);
+					if (!target) return null;
 
-			if (target.kind === "usage") {
-				return renameFromUsage(document, target, newName);
-			}
+					if (target.kind === "usage") {
+						return renameFromUsage(document, target, newName);
+					}
 
-			return renameFromCss(document, target, newName, token);
+					return renameFromCss(document, target, newName, token);
+				},
+				resolveOptions(options).debugPerformance
+			);
 		}
 	};
 }

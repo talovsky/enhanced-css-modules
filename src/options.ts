@@ -10,6 +10,7 @@ export type PathAlias = AliasFromUserOptions | AliasFromTsConfig;
 export interface ExtensionOptions {
 	camelCase: CamelCaseValues;
 	createCssModuleTargetFolder: string;
+	debugPerformance: boolean;
 	pathAlias: AliasFromUserOptions;
 }
 
@@ -30,6 +31,7 @@ export function readOptions(): ExtensionOptions {
 	cachedOptions = {
 		camelCase: configuration.get<CamelCaseValues>("camelCase", false),
 		createCssModuleTargetFolder: configuration.get<string>("createCssModule.targetFolder", ""),
+		debugPerformance: configuration.get<boolean>("debugPerformance", false),
 		pathAlias: configuration.get<AliasFromUserOptions>("pathAlias", {})
 	};
 
