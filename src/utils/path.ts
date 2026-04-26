@@ -17,7 +17,7 @@ interface CachedDocumentImports {
 
 const documentImportCache = new WeakMap<TextDocument, CachedDocumentImports>();
 
-async function pathExists(p: string): Promise<boolean> {
+export async function pathExists(p: string): Promise<boolean> {
 	try {
 		await fs.access(p);
 		return true;
@@ -107,8 +107,4 @@ export async function resolveImportPath(
 	}
 
 	return "";
-}
-
-export function findImportModule(text: string, key: string): string {
-	return findImportModuleFromImports(findCssModuleImports(text), key);
 }

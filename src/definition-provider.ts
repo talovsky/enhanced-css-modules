@@ -4,23 +4,18 @@ import { type TextDocument, Position, type CancellationToken, Location, Uri } fr
 
 import { type ExtensionOptionsProvider, resolveOptions } from "./options";
 import { getRealPathAlias } from "./path-alias";
-import { getClassTransformer, type ClassTransformer } from "./utils";
-import { getCssClassesFromFile, isClassNameMatch } from "./utils/class-names";
+import { getCssClassesFromFile } from "./utils/class-names";
 import { resolveImportPath } from "./utils/path";
 import { measurePerformance } from "./utils/performance";
 import { getCssModuleClickInfo } from "./utils/usages";
 
-async function getTargetPosition(
-	filePath: string,
-	targetClass: string,
-	classTransformer: ClassTransformer | null
-): Promise<Position | null> {
+async function getTargetPosition(filePath: string, targetClass: string): Promise<Position | null> {
 	if (targetClass === "") {
 		return new Position(0, 0);
 	}
 
 	const classes = await getCssClassesFromFile(filePath);
-	return classes.find(c => isClassNameMatch(c.name, targetClass, classTransformer))?.range.start ?? null;
+	return classes.find(c => c.name === targetClass)?.range.start ?? null;
 }
 
 export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvider) {
@@ -30,12 +25,11 @@ export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvi
 			position: Position,
 			token?: CancellationToken
 		): Promise<Location | null> {
-			const { classNameExportConvention, debugPerformance, pathAlias } = resolveOptions(options);
+			const { debugPerformance, pathAlias } = resolveOptions(options);
 			return measurePerformance(
 				"definition",
 				async () => {
 					const currentDir = path.dirname(document.uri.fsPath);
-					const classTransformer = getClassTransformer(classNameExportConvention);
 
 					const clickInfo = getCssModuleClickInfo(document, position);
 					if (!clickInfo) {
@@ -52,7 +46,7 @@ export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvi
 						return null;
 					}
 
-					const targetPosition = await getTargetPosition(importPath, clickInfo.targetClass, classTransformer);
+					const targetPosition = await getTargetPosition(importPath, clickInfo.targetClass);
 					if (targetPosition === null || token?.isCancellationRequested) {
 						return null;
 					}

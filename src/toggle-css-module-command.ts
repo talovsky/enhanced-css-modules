@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 
 import { commands, type Disposable, RelativePattern, Uri, window, workspace } from "vscode";
@@ -12,6 +11,7 @@ import {
 	isCssModuleSourcePath,
 	resolveCssModuleTargetFolder
 } from "./utils/create-css-module";
+import { pathExists } from "./utils/path";
 
 export const TOGGLE_CSS_MODULE_COMMAND = "enhancedCssModules.toggleCssModule";
 
@@ -62,7 +62,9 @@ async function findCssModuleFile(sourceUri: Uri): Promise<Uri | undefined> {
 	}
 
 	const sourceFolderPath = path.dirname(sourceUri.fsPath);
-	const targetFolderPaths = getUniqueValues([getConfiguredTargetFolderPath(sourceUri), sourceFolderPath]);
+	const targetFolderPaths = [getConfiguredTargetFolderPath(sourceUri), sourceFolderPath].filter(
+		(v): v is string => v !== undefined
+	);
 	const targetPath = await findExistingPath(getCssModulePathCandidates(sourceUri.fsPath, targetFolderPaths));
 	return targetPath ? Uri.file(targetPath) : undefined;
 }
@@ -112,17 +114,4 @@ async function findSourceFileInWorkspace(cssModuleUri: Uri): Promise<Uri | undef
 	}
 
 	return undefined;
-}
-
-async function pathExists(filePath: string): Promise<boolean> {
-	try {
-		await fs.access(filePath);
-		return true;
-	} catch {
-		return false;
-	}
-}
-
-function getUniqueValues(values: Array<string | undefined>): string[] {
-	return Array.from(new Set(values.filter((value): value is string => Boolean(value))));
 }

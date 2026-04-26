@@ -4,13 +4,7 @@ import { type TextDocument, type Position, type CancellationToken, CompletionIte
 
 import { type ExtensionOptionsProvider, readOptions, resolveOptions } from "./options";
 import { getRealPathAlias } from "./path-alias";
-import {
-	getAllClassNames,
-	getCurrentLine,
-	getClassTransformer,
-	isKebabCaseClassName,
-	createBracketCompletionItem
-} from "./utils";
+import { getAllClassNames, getCurrentLine, isKebabCaseClassName, createBracketCompletionItem } from "./utils";
 import { findImportModuleInDocument, resolveImportPath } from "./utils/path";
 import { measurePerformance } from "./utils/performance";
 
@@ -38,8 +32,6 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 			return measurePerformance(
 				"completion",
 				async () => {
-					const classTransformer = getClassTransformer(currentOptions.classNameExportConvention);
-					const pathAliasOptions = currentOptions.pathAlias;
 					const currentLine = getCurrentLine(document, position);
 					const currentDir = path.dirname(document.uri.fsPath);
 
@@ -58,7 +50,7 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 						return [];
 					}
 
-					const realPathAlias = await getRealPathAlias(pathAliasOptions, document);
+					const realPathAlias = await getRealPathAlias(currentOptions.pathAlias, document);
 					if (token?.isCancellationRequested) {
 						return [];
 					}
@@ -68,17 +60,16 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 						return [];
 					}
 
-					const classNames = await getAllClassNames(importPath, field, classTransformer);
+					const classNames = await getAllClassNames(importPath, field);
 					if (token?.isCancellationRequested) {
 						return [];
 					}
 
-					return classNames.map(_class => {
-						const name = classTransformer ? classTransformer(_class) : _class;
-						return isKebabCaseClassName(name)
+					return classNames.map(name =>
+						isKebabCaseClassName(name)
 							? createBracketCompletionItem(name, position, currentLine)
-							: new CompletionItem(name, CompletionItemKind.Variable);
-					});
+							: new CompletionItem(name, CompletionItemKind.Variable)
+					);
 				},
 				currentOptions.debugPerformance
 			);

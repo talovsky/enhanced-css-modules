@@ -4,7 +4,6 @@ import test from "node:test";
 import * as vscode from "vscode";
 
 import { createCSSModuleDefinitionProvider } from "../../definition-provider";
-import { type ClassNameConvention } from "../../options";
 import { JUMP_PRECISE_DEF_FILE, SAMPLE_REACT_FILE, SPREAD_SYNTAX_FILE, STYLUS_TSX_FILE } from "../constant";
 import { readOptions } from "../utils";
 
@@ -35,24 +34,6 @@ async function testDefinition(
 ) {
 	const result = await getDefinitionLineAndChar(position, fixtureFile);
 	assert.strictEqual(true, result.line === lineNum && result.character === characterNum);
-}
-
-function testDefinitionWithConvention(
-	position: vscode.Position,
-	classNameExportConvention: ClassNameConvention,
-	assertions: any[]
-) {
-	return vscode.workspace.openTextDocument(uri).then(text => {
-		const provider = createCSSModuleDefinitionProvider(
-			readOptions({
-				classNameExportConvention
-			})
-		);
-		return provider.provideDefinition(text, position, undefined).then(location => {
-			const position = location ? location.range.start : null;
-			assertions.map(assertion => assertion(position));
-		});
-	});
 }
 
 test("testing es6 style definition", () => {
@@ -137,33 +118,6 @@ test("testing stylus nest classname jump to definition", () => {
 	return Promise.resolve(testDefinition(position, 4, 3, uri3)).catch(err =>
 		assert.ok(false, `error in OpenTextDocument ${err}`)
 	);
-});
-
-test("test asIs convention does not match transformed definition", () => {
-	const position = new vscode.Position(6, 21);
-	return Promise.resolve(
-		testDefinitionWithConvention(position, "asIs", [
-			(position?: vscode.Position | null) => assert.strictEqual(position, null)
-		])
-	).catch(err => assert.ok(false, `error in OpenTextDocument ${err}`));
-});
-
-test("test camelCase convention style definition", () => {
-	const position = new vscode.Position(6, 21);
-	return Promise.resolve(
-		testDefinitionWithConvention(position, "camelCase", [
-			(position?: vscode.Position) => assert.strictEqual(true, position.line === 8 && position.character === 1)
-		])
-	).catch(err => assert.ok(false, `error in OpenTextDocument ${err}`));
-});
-
-test("test dashes convention style definition", () => {
-	const position = new vscode.Position(7, 21);
-	return Promise.resolve(
-		testDefinitionWithConvention(position, "dashes", [
-			(position?: vscode.Position) => assert.strictEqual(true, position.line === 8 && position.character === 1)
-		])
-	).catch(err => assert.ok(false, `error in OpenTextDocument ${err}`));
 });
 
 test("ignore spread syntax", async () => {

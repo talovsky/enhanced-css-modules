@@ -54,16 +54,28 @@ export function getCssModuleUsageAtPosition(document: TextDocument, position: Po
 	let match: RegExpExecArray | null = null;
 
 	while ((match = usageRe.exec(line)) !== null) {
+		if (!isCodeOffset(text, lineStart + match.index)) {
+			continue;
+		}
 		const syntax: UsageSyntax = match[2] === "." ? "dot" : "bracket";
 		const className = syntax === "dot" ? match[3] : match[5];
 		const classStart = match.index + match[0].lastIndexOf(className);
 		const classEnd = classStart + className.length;
-		if (lineOffset >= classStart && lineOffset <= classEnd && isCodeOffset(text, lineStart + match.index)) {
+		const importEnd = match.index + match[1].length;
+		if (lineOffset >= classStart && lineOffset <= classEnd) {
 			return {
 				importName: match[1],
 				className,
 				syntax,
 				classRange: new Range(document.positionAt(lineStart + classStart), document.positionAt(lineStart + classEnd))
+			};
+		}
+		if (lineOffset >= match.index && lineOffset <= importEnd) {
+			return {
+				importName: match[1],
+				className: "",
+				syntax,
+				classRange: new Range(document.positionAt(lineStart + match.index), document.positionAt(lineStart + importEnd))
 			};
 		}
 	}

@@ -4,7 +4,6 @@ import test from "node:test";
 import * as vscode from "vscode";
 
 import { createCSSModuleCompletionProvider } from "../../completion-provider";
-import type { ClassNameConvention } from "../../options";
 import {
 	SAMPLE_ASTRO_FILE,
 	SAMPLE_JS_FILE,
@@ -27,23 +26,6 @@ function testCompletion(position: vscode.Position, itemCount: number, fixtureFil
 		const provider = createCSSModuleCompletionProvider(readOptions());
 		return provider.provideCompletionItems(text, position).then(items => {
 			assert.strictEqual(itemCount, items.length);
-		});
-	});
-}
-
-function testCompletionWithConvention(
-	position: vscode.Position,
-	classNameExportConvention: ClassNameConvention,
-	assertions: any[]
-) {
-	return vscode.workspace.openTextDocument(uri).then(text => {
-		const provider = createCSSModuleCompletionProvider(
-			readOptions({
-				classNameExportConvention
-			})
-		);
-		return provider.provideCompletionItems(text, position).then(items => {
-			assertions.map(assertion => assertion(items));
 		});
 	});
 }
@@ -125,64 +107,22 @@ test("test .stylus extname stylus completion", () => {
 	});
 });
 
-test("test asIs convention style completion", () => {
+test("test kebab-case class name completion shows label as-is", async () => {
 	const position = new vscode.Position(5, 21);
-	return Promise.resolve(
-		testCompletionWithConvention(position, "asIs", [
-			items => assert.strictEqual(1, items.length),
-			items => assert.strictEqual("sidebar_without-header", items[0].label)
-		])
-	).catch(err => {
-		assert.ok(false, `error in OpenTextDocument ${err}`);
-	});
+	const text = await vscode.workspace.openTextDocument(uri);
+	const provider = createCSSModuleCompletionProvider(readOptions());
+	const items = await provider.provideCompletionItems(text, position);
+	assert.strictEqual(1, items.length);
+	assert.strictEqual("sidebar_without-header", items[0].label);
 });
 
-test("test asIs convention and kebab-case completion", () => {
+test("test kebab-case class name completion inserts bracket notation", async () => {
 	const position = new vscode.Position(5, 21);
-	return Promise.resolve(
-		testCompletionWithConvention(position, "asIs", [
-			items => assert.strictEqual(1, items.length),
-			items => assert.strictEqual(items[0].insertText, `["sidebar_without-header"]`)
-		])
-	).catch(err => {
-		assert.ok(false, `error in OpenTextDocument ${err}`);
-	});
-});
-
-test("test camelCase convention style completion", () => {
-	const position = new vscode.Position(5, 21);
-	return Promise.resolve(
-		testCompletionWithConvention(position, "camelCase", [
-			items => assert.strictEqual(1, items.length),
-			items => assert.strictEqual("sidebarWithoutHeader", items[0].label)
-		])
-	).catch(err => {
-		assert.ok(false, `error in OpenTextDocument ${err}`);
-	});
-});
-
-test("test camelCase convention filters by typed transformed prefix", () => {
-	const position = new vscode.Position(6, 28);
-	return Promise.resolve(
-		testCompletionWithConvention(position, "camelCase", [
-			items => assert.strictEqual(1, items.length),
-			items => assert.strictEqual("sidebarWithoutHeader", items[0].label)
-		])
-	).catch(err => {
-		assert.ok(false, `error in OpenTextDocument ${err}`);
-	});
-});
-
-test("test dashes convention style completion", () => {
-	const position = new vscode.Position(5, 21);
-	return Promise.resolve(
-		testCompletionWithConvention(position, "dashes", [
-			items => assert.strictEqual(1, items.length),
-			items => assert.strictEqual("sidebar_withoutHeader", items[0].label)
-		])
-	).catch(err => {
-		assert.ok(false, `error in OpenTextDocument ${err}`);
-	});
+	const text = await vscode.workspace.openTextDocument(uri);
+	const provider = createCSSModuleCompletionProvider(readOptions());
+	const items = await provider.provideCompletionItems(text, position);
+	assert.strictEqual(1, items.length);
+	assert.strictEqual(items[0].insertText, `["sidebar_without-header"]`);
 });
 
 test("support jsx", () => {

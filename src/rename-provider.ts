@@ -13,12 +13,11 @@ import {
 
 import { type ExtensionOptionsProvider, resolveOptions } from "./options";
 import { getRealPathAlias } from "./path-alias";
-import { type ClassTransformer, getClassTransformer } from "./utils";
-import { type CssClass, findCssClasses, getCssClassesFromFile, getUsageNamesForCssName } from "./utils/class-names";
+import { findCssClasses, getCssClassesFromFile, type CssClass } from "./utils/class-names";
 import { getSourcePathCandidates } from "./utils/create-css-module";
 import { findCssModuleImports, findImportModuleInDocument, resolveImportPath } from "./utils/path";
 import { measurePerformance } from "./utils/performance";
-import { type CssModuleUsage, findUsageRangesForClassNames, getCssModuleUsageAtPosition } from "./utils/usages";
+import { findUsageRangesForClassNames, getCssModuleUsageAtPosition } from "./utils/usages";
 
 interface UsageTarget {
 	kind: "usage";
@@ -27,7 +26,6 @@ interface UsageTarget {
 	cssName: string;
 	className: string;
 	classRange: Range;
-	syntax: "dot" | "bracket";
 }
 
 interface CssTarget {
@@ -37,15 +35,6 @@ interface CssTarget {
 }
 
 type RenameTarget = UsageTarget | CssTarget;
-
-interface RenameNames {
-	cssName: string;
-	usageName: string;
-}
-
-interface RenameContext {
-	classTransformer: ClassTransformer | null;
-}
 
 export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider) {
 	async function getRenameTarget(
@@ -70,7 +59,6 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 		token: CancellationToken
 	): Promise<UsageTarget | null> {
 		const currentOptions = resolveOptions(options);
-		const classTransformer = getClassTransformer(currentOptions.classNameExportConvention);
 		const usage = getCssModuleUsageAtPosition(document, position);
 		if (!usage) return null;
 
@@ -84,7 +72,7 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 		if (!importPath || token.isCancellationRequested) return null;
 		if (isInNodeModules(importPath)) return null;
 
-		const cssClass = await findMatchingCssClass(importPath, usage.className, usage.syntax, classTransformer);
+		const cssClass = await findMatchingCssClass(importPath, usage.className);
 		if (!cssClass || token.isCancellationRequested) return null;
 
 		return {
@@ -93,8 +81,7 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 			importPath,
 			cssName: cssClass.name,
 			className: usage.className,
-			classRange: usage.classRange,
-			syntax: usage.syntax
+			classRange: usage.classRange
 		};
 	}
 
@@ -107,27 +94,6 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 			className: cssClass.name,
 			classRange: cssClass.range
 		};
-	}
-
-	async function renameFromUsage(
-		document: TextDocument,
-		target: UsageTarget,
-		newName: string
-	): Promise<WorkspaceEdit | null> {
-		return createUsageRenameEdit(document, target, newName, {
-			classTransformer: getClassTransformer(resolveOptions(options).classNameExportConvention)
-		});
-	}
-
-	async function renameFromCss(
-		document: TextDocument,
-		target: CssTarget,
-		newName: string,
-		token: CancellationToken
-	): Promise<WorkspaceEdit | null> {
-		return createCssRenameEdit(document, target, newName, token, {
-			classTransformer: getClassTransformer(resolveOptions(options).classNameExportConvention)
-		});
 	}
 
 	return {
@@ -164,10 +130,10 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 					if (!target) return null;
 
 					if (target.kind === "usage") {
-						return renameFromUsage(document, target, newName);
+						return createUsageRenameEdit(document, target, newName);
 					}
 
-					return renameFromCss(document, target, newName, token);
+					return createCssRenameEdit(document, target, newName, token);
 				},
 				resolveOptions(options).debugPerformance
 			);
@@ -175,43 +141,26 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 	};
 }
 
-async function findMatchingCssClass(
-	filePath: string,
-	className: string,
-	syntax: CssModuleUsage["syntax"],
-	classTransformer: ClassTransformer | null
-): Promise<CssClass | null> {
+async function findMatchingCssClass(filePath: string, className: string): Promise<CssClass | null> {
 	const classes = await getCssClassesFromFile(filePath);
-	return (
-		classes.find(cssClass => {
-			if (cssClass.name === className) return true;
-			if (syntax === "bracket") return false;
-			return getUsageNamesForCssName(cssClass.name, classTransformer).includes(className);
-		}) ?? null
-	);
+	return classes.find(c => c.name === className) ?? null;
 }
 
 async function createUsageRenameEdit(
 	document: TextDocument,
 	target: UsageTarget,
-	newName: string,
-	context: RenameContext
+	newName: string
 ): Promise<WorkspaceEdit | null> {
-	const cssClass = await findMatchingCssClass(
-		target.importPath,
-		target.className,
-		target.syntax,
-		context.classTransformer
-	);
+	const cssClass = await findMatchingCssClass(target.importPath, target.className);
 	if (!cssClass) return null;
 
-	const names = normalizeRename(newName, context.classTransformer);
-	if (!names) return null;
+	const normalizedName = normalizeRename(newName);
+	if (!normalizedName) return null;
 
 	const edit = new WorkspaceEdit();
-	edit.replace(Uri.file(target.importPath), cssClass.range, names.cssName);
+	edit.replace(Uri.file(target.importPath), cssClass.range, normalizedName);
 
-	replaceUsageRanges(edit, document, target.importName, cssClass.name, names, context.classTransformer);
+	replaceUsageRanges(edit, document, target.importName, cssClass.name, normalizedName);
 
 	return edit;
 }
@@ -220,17 +169,16 @@ async function createCssRenameEdit(
 	document: TextDocument,
 	target: CssTarget,
 	newName: string,
-	token: CancellationToken,
-	context: RenameContext
+	token: CancellationToken
 ): Promise<WorkspaceEdit | null> {
-	const names = normalizeRename(newName, context.classTransformer);
-	if (!names) return null;
+	const normalizedName = normalizeRename(newName);
+	if (!normalizedName) return null;
 
 	const edit = new WorkspaceEdit();
 
 	for (const cssClass of findCssClasses(document.getText())) {
 		if (cssClass.name === target.className) {
-			edit.replace(document.uri, cssClass.range, names.cssName);
+			edit.replace(document.uri, cssClass.range, normalizedName);
 		}
 	}
 
@@ -239,7 +187,7 @@ async function createCssRenameEdit(
 		if (token.isCancellationRequested) return null;
 
 		const sourceDocument = await workspace.openTextDocument(importer.uri);
-		replaceUsageRanges(edit, sourceDocument, importer.importName, target.className, names, context.classTransformer);
+		replaceUsageRanges(edit, sourceDocument, importer.importName, target.className, normalizedName);
 	}
 
 	return edit;
@@ -250,40 +198,33 @@ function replaceUsageRanges(
 	document: TextDocument,
 	importName: string,
 	oldCssName: string,
-	names: RenameNames,
-	classTransformer: ClassTransformer | null
+	newCssName: string
 ): void {
-	const oldUsageNames = getUsageNamesForCssName(oldCssName, classTransformer);
-	for (const usage of findUsageRangesForClassNames(document, importName, oldUsageNames)) {
-		const replacement = getUsageReplacement(usage, names);
+	for (const usage of findUsageRangesForClassNames(document, importName, [oldCssName])) {
+		const replacement = getUsageReplacement(usage, newCssName);
 		edit.replace(document.uri, replacement.range, replacement.text);
 	}
 }
 
 function getUsageReplacement(
 	usage: ReturnType<typeof findUsageRangesForClassNames>[number],
-	names: RenameNames
+	newCssName: string
 ): { range: Range; text: string } {
 	if (usage.syntax === "bracket") {
-		return { range: usage.range, text: names.cssName };
+		return { range: usage.range, text: newCssName };
 	}
 
-	if (isValidPropertyAccessName(names.usageName)) {
-		return { range: usage.range, text: names.usageName };
+	if (isValidPropertyAccessName(newCssName)) {
+		return { range: usage.range, text: newCssName };
 	}
 
 	const prefix = usage.operator === "?." ? "?." : "";
-	return { range: usage.accessRange, text: `${prefix}["${names.cssName}"]` };
+	return { range: usage.accessRange, text: `${prefix}["${newCssName}"]` };
 }
 
-function normalizeRename(newName: string, classTransformer: ClassTransformer | null): RenameNames | null {
+function normalizeRename(newName: string): string | null {
 	const trimmedName = newName.trim().replace(/^\./, "");
-	if (!trimmedName || !isValidClassName(trimmedName)) return null;
-
-	return {
-		cssName: trimmedName,
-		usageName: classTransformer ? classTransformer(trimmedName) : trimmedName
-	};
+	return trimmedName && isValidClassName(trimmedName) ? trimmedName : null;
 }
 
 function isValidClassName(className: string): boolean {

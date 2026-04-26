@@ -2,7 +2,6 @@ import fs from "node:fs/promises";
 
 import { Position, Range } from "vscode";
 
-import { type ClassTransformer } from "./index";
 import { measurePerformance } from "./performance";
 
 interface CachedCssClasses {
@@ -63,21 +62,6 @@ export function findCssClasses(content: string): CssClass[] {
 	}
 
 	return classes;
-}
-
-export function isClassNameMatch(
-	cssClassName: string,
-	className: string,
-	classTransformer: ClassTransformer | null
-): boolean {
-	if (cssClassName === className) return true;
-	if (classTransformer && classTransformer(cssClassName) === className) return true;
-
-	return false;
-}
-
-export function getUsageNamesForCssName(cssName: string, classTransformer: ClassTransformer | null): string[] {
-	return [...new Set([classTransformer ? classTransformer(cssName) : null, cssName].filter(Boolean))];
 }
 
 function rememberCssClasses(filePath: string, cachedClasses: CachedCssClasses): void {

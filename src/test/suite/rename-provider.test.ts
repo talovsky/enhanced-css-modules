@@ -12,28 +12,6 @@ const renameCssFile = path.join(FIXTURES_PATH, "rename.css");
 const renameTsxFile = path.join(FIXTURES_PATH, "rename.tsx");
 const token = { isCancellationRequested: false } as any;
 
-test("renames dot usages to camelCase when new CSS class is dashed", async () => {
-	const document = await vscode.workspace.openTextDocument(renameTsxFile);
-	const provider = createCSSModuleRenameProvider(
-		readOptions({
-			classNameExportConvention: "camelCase"
-		})
-	);
-
-	const edit = await provider.provideRenameEdits(document, new vscode.Position(2, 4), "icon-primary", token);
-	assert.ok(edit);
-
-	const entries = edit.entries();
-	const cssEdits = entries.find(([uri]) => uri.fsPath === renameCssFile)?.[1] || [];
-	const usageEdits = entries.find(([uri]) => uri.fsPath === renameTsxFile)?.[1] || [];
-
-	assert.deepStrictEqual(
-		cssEdits.map(item => item.newText),
-		["icon-primary"]
-	);
-	assert.deepStrictEqual(usageEdits.map(item => item.newText).sort(), ["icon-primary", "iconPrimary"]);
-});
-
 test("renames invalid asIs dot usages to bracket syntax", async () => {
 	const document = await vscode.workspace.openTextDocument(renameTsxFile);
 	const provider = createCSSModuleRenameProvider(readOptions());
@@ -46,27 +24,6 @@ test("renames invalid asIs dot usages to bracket syntax", async () => {
 		usageEdits.map(item => [item.range.start.line, item.range.start.character, item.newText]),
 		[
 			[2, 2, `["icon-primary"]`],
-			[3, 4, "icon-primary"]
-		]
-	);
-});
-
-test("does not rename usages inside strings or comments", async () => {
-	const document = await vscode.workspace.openTextDocument(renameTsxFile);
-	const provider = createCSSModuleRenameProvider(
-		readOptions({
-			classNameExportConvention: "camelCase"
-		})
-	);
-
-	const edit = await provider.provideRenameEdits(document, new vscode.Position(2, 4), "icon-primary", token);
-	assert.ok(edit);
-
-	const usageEdits = edit.entries().find(([uri]) => uri.fsPath === renameTsxFile)?.[1] || [];
-	assert.deepStrictEqual(
-		usageEdits.map(item => [item.range.start.line, item.range.start.character, item.newText]),
-		[
-			[2, 3, "iconPrimary"],
 			[3, 4, "icon-primary"]
 		]
 	);

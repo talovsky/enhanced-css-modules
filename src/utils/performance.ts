@@ -1,18 +1,18 @@
 import { performance } from "node:perf_hooks";
 
 import type { OutputChannel } from "vscode";
+import { window } from "vscode";
 
 import { readOptions } from "../options";
 
 const OUTPUT_CHANNEL_NAME = "Enhanced CSS Modules Performance";
 let performanceOutputChannel: OutputChannel | null = null;
 
-export function getPerformanceOutputChannelName(): string {
-	return OUTPUT_CHANNEL_NAME;
-}
-
-export function setPerformanceOutputChannel(outputChannel: OutputChannel): void {
-	performanceOutputChannel = outputChannel;
+function getOutputChannel() {
+	if (!performanceOutputChannel) {
+		performanceOutputChannel = window.createOutputChannel(OUTPUT_CHANNEL_NAME);
+	}
+	return performanceOutputChannel;
 }
 
 export async function measurePerformance<T>(
@@ -39,12 +39,7 @@ export function logPerformance(label: string, start: number, enabled = readOptio
 
 	const duration = performance.now() - start;
 	const message = `${label}: ${duration.toFixed(1)}ms`;
-	if (performanceOutputChannel) {
-		performanceOutputChannel.appendLine(message);
-		return;
-	}
-
-	console.info(`[${OUTPUT_CHANNEL_NAME}] ${message}`);
+	getOutputChannel().appendLine(message);
 }
 
 export function now(): number {
