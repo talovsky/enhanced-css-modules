@@ -12,6 +12,16 @@ export class Range {
 		public start: Position,
 		public end: Position
 	) {}
+
+	contains(position: Position): boolean {
+		const afterStart =
+			position.line > this.start.line ||
+			(position.line === this.start.line && position.character >= this.start.character);
+		const beforeEnd =
+			position.line < this.end.line || (position.line === this.end.line && position.character <= this.end.character);
+
+		return afterStart && beforeEnd;
+	}
 }
 
 export class Uri {
@@ -153,6 +163,15 @@ export const workspace = {
 			onDidChange() {},
 			onDidCreate() {},
 			onDidDelete() {},
+			dispose() {}
+		};
+	}
+};
+
+export const window = {
+	createOutputChannel() {
+		return {
+			appendLine() {},
 			dispose() {}
 		};
 	}

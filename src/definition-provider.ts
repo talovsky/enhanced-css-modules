@@ -1,11 +1,8 @@
-import path from "node:path";
-
 import { type TextDocument, Position, type CancellationToken, Location, Uri } from "vscode";
 
 import { type ExtensionOptionsProvider, resolveOptions } from "./options";
-import { getRealPathAlias } from "./path-alias";
 import { getCssClassesFromFile } from "./utils/class-names";
-import { resolveImportPath } from "./utils/path";
+import { resolveCssModulePath } from "./utils/css-module-context";
 import { measurePerformance } from "./utils/performance";
 import { getCssModuleClickInfo } from "./utils/usages";
 
@@ -29,20 +26,13 @@ export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvi
 			return measurePerformance(
 				"definition",
 				async () => {
-					const currentDir = path.dirname(document.uri.fsPath);
-
 					const clickInfo = getCssModuleClickInfo(document, position);
 					if (!clickInfo) {
 						return null;
 					}
 
-					const realPathAlias = await getRealPathAlias(pathAlias, document);
-					if (token?.isCancellationRequested) {
-						return null;
-					}
-
-					const importPath = await resolveImportPath(clickInfo.importModule, currentDir, realPathAlias);
-					if (importPath === "" || token?.isCancellationRequested) {
+					const importPath = await resolveCssModulePath(document, clickInfo.importModule, pathAlias, token);
+					if (importPath === null) {
 						return null;
 					}
 

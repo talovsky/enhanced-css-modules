@@ -1,4 +1,3 @@
-import fs from "node:fs/promises";
 import path from "node:path";
 
 import {
@@ -12,10 +11,9 @@ import {
 } from "vscode";
 
 import { type ExtensionOptionsProvider, resolveOptions } from "./options";
-import { getRealPathAlias } from "./path-alias";
 import { findCssClasses, getCssClassesFromFile, type CssClass } from "./utils/class-names";
-import { getSourcePathCandidates } from "./utils/create-css-module";
-import { findCssModuleImports, findImportModuleInDocument, resolveImportPath } from "./utils/path";
+import { resolveCssModuleImport } from "./utils/css-module-context";
+import { findCssModuleImporters } from "./utils/css-module-importers";
 import { measurePerformance } from "./utils/performance";
 import { findUsageRangesForClassNames, getCssModuleUsageAtPosition } from "./utils/usages";
 
@@ -62,23 +60,16 @@ export function createCSSModuleRenameProvider(options: ExtensionOptionsProvider)
 		const usage = getCssModuleUsageAtPosition(document, position);
 		if (!usage) return null;
 
-		const importModule = findImportModuleInDocument(document, usage.importName);
-		if (!importModule) return null;
+		const cssModule = await resolveCssModuleImport(document, usage.importName, currentOptions.pathAlias, token);
+		if (!cssModule || isInNodeModules(cssModule.importPath)) return null;
 
-		const realPathAlias = await getRealPathAlias(currentOptions.pathAlias, document);
-		if (token.isCancellationRequested) return null;
-
-		const importPath = await resolveImportPath(importModule, path.dirname(document.uri.fsPath), realPathAlias);
-		if (!importPath || token.isCancellationRequested) return null;
-		if (isInNodeModules(importPath)) return null;
-
-		const cssClass = await findMatchingCssClass(importPath, usage.className);
+		const cssClass = await findMatchingCssClass(cssModule.importPath, usage.className);
 		if (!cssClass || token.isCancellationRequested) return null;
 
 		return {
 			kind: "usage",
 			importName: usage.importName,
-			importPath,
+			importPath: cssModule.importPath,
 			cssName: cssClass.name,
 			className: usage.className,
 			classRange: usage.classRange
@@ -241,40 +232,6 @@ function isCssModuleDocument(document: TextDocument): boolean {
 
 function isInNodeModules(fsPath: string): boolean {
 	return fsPath.split(path.sep).includes("node_modules");
-}
-
-async function findCssModuleImporters(
-	cssUri: Uri,
-	token: CancellationToken
-): Promise<{ uri: Uri; importName: string }[]> {
-	const cssDir = path.dirname(cssUri.fsPath);
-	const cssNormalized = path.normalize(cssUri.fsPath);
-	const candidates = getSourcePathCandidates(cssUri.fsPath, [cssDir]);
-	const importers: { uri: Uri; importName: string }[] = [];
-
-	for (const candidatePath of candidates) {
-		if (token.isCancellationRequested) break;
-
-		const content = await readTextFile(candidatePath);
-		if (content !== null) {
-			const dirname = path.dirname(candidatePath);
-			for (const item of findCssModuleImports(content)) {
-				if (path.normalize(path.resolve(dirname, item.moduleName)) === cssNormalized) {
-					importers.push({ uri: Uri.file(candidatePath), importName: item.importName });
-				}
-			}
-		}
-	}
-
-	return importers;
-}
-
-async function readTextFile(filePath: string): Promise<string | null> {
-	try {
-		return await fs.readFile(filePath, { encoding: "utf8" });
-	} catch {
-		return null;
-	}
 }
 
 export default createCSSModuleRenameProvider;

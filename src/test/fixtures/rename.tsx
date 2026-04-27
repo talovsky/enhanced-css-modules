@@ -6,3 +6,4 @@ const literal = "cn.icon";
 const bracketLiteral = 'cn["icon"]';
 // cn.icon;
 /* cn["icon"] */
+cn.classNameActive;

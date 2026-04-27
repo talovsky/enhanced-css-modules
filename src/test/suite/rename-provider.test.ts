@@ -37,3 +37,10 @@ test("does not prepare rename inside strings or comments", async () => {
 	assert.strictEqual(await provider.prepareRename(document, new vscode.Position(6, 6), token), null);
 	assert.strictEqual(await provider.prepareRename(document, new vscode.Position(7, 7), token), null);
 });
+
+test("does not match converted class names", async () => {
+	const document = await vscode.workspace.openTextDocument(renameTsxFile);
+	const provider = createCSSModuleRenameProvider(readOptions());
+
+	assert.strictEqual(await provider.prepareRename(document, new vscode.Position(8, 6), token), null);
+});

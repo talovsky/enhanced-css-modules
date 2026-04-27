@@ -4,6 +4,7 @@ import { createCSSModuleCompletionProvider } from "./completion-provider";
 import { registerCreateCssModuleCommand } from "./create-css-module-command";
 import { createCSSModuleDefinitionProvider } from "./definition-provider";
 import { readOptions, subscribeToConfigChanges } from "./options";
+import { createCSSModuleReferenceProvider } from "./reference-provider";
 import { createCSSModuleRenameProvider } from "./rename-provider";
 import { registerToggleCssModuleCommand } from "./toggle-css-module-command";
 import { subscribeToTsConfigChanges } from "./utils/ts-alias";
@@ -24,9 +25,11 @@ export function activate(context: ExtensionContext): void {
 		{ language: "less", scheme: "file" },
 		{ language: "stylus", scheme: "file" }
 	];
+	const styleMode: DocumentFilter[] = renameMode.slice(mode.length);
 	context.subscriptions.push(
 		languages.registerCompletionItemProvider(mode, createCSSModuleCompletionProvider(readOptions), ".", '"', "'"),
 		languages.registerDefinitionProvider(mode, createCSSModuleDefinitionProvider(readOptions)),
+		languages.registerReferenceProvider(styleMode, createCSSModuleReferenceProvider()),
 		languages.registerRenameProvider(renameMode, createCSSModuleRenameProvider(readOptions)),
 		registerCreateCssModuleCommand(),
 		registerToggleCssModuleCommand()

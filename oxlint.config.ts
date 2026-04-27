@@ -18,9 +18,12 @@ export default defineConfig({
 		"unicorn/no-null": "off",
 		"eslint/guard-for-in": "off",
 		"eslint/curly": "off",
-		"eslint/max-params": ["off", {
-			max: 5
-		}]
+		"eslint/max-params": [
+			"off",
+			{
+				max: 5
+			}
+		]
 	},
 	env: {
 		builtin: true

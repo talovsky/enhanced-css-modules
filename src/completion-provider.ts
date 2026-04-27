@@ -1,11 +1,8 @@
-import path from "node:path";
-
 import { type TextDocument, type Position, type CancellationToken, CompletionItem, CompletionItemKind } from "vscode";
 
 import { type ExtensionOptionsProvider, readOptions, resolveOptions } from "./options";
-import { getRealPathAlias } from "./path-alias";
 import { getAllClassNames, getCurrentLine, isKebabCaseClassName, createBracketCompletionItem } from "./utils";
-import { findImportModuleInDocument, resolveImportPath } from "./utils/path";
+import { resolveCssModuleImport } from "./utils/css-module-context";
 import { measurePerformance } from "./utils/performance";
 
 function getWords(line: string, position: Position): string {
@@ -33,7 +30,6 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 				"completion",
 				async () => {
 					const currentLine = getCurrentLine(document, position);
-					const currentDir = path.dirname(document.uri.fsPath);
 
 					const splitRegex = /\.|\["|\['/;
 					const words = getWords(currentLine, position);
@@ -45,22 +41,12 @@ export function createCSSModuleCompletionProvider(options: ExtensionOptionsProvi
 					const [obj] = segments;
 					const field = segments.at(-1) || "";
 
-					const importModule = findImportModuleInDocument(document, obj);
-					if (importModule === "") {
+					const cssModule = await resolveCssModuleImport(document, obj, currentOptions.pathAlias, token);
+					if (!cssModule) {
 						return [];
 					}
 
-					const realPathAlias = await getRealPathAlias(currentOptions.pathAlias, document);
-					if (token?.isCancellationRequested) {
-						return [];
-					}
-
-					const importPath = await resolveImportPath(importModule, currentDir, realPathAlias);
-					if (importPath === "" || token?.isCancellationRequested) {
-						return [];
-					}
-
-					const classNames = await getAllClassNames(importPath, field);
+					const classNames = await getAllClassNames(cssModule.importPath, field);
 					if (token?.isCancellationRequested) {
 						return [];
 					}
