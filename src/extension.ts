@@ -26,13 +26,9 @@ export function activate(context: ExtensionContext): void {
 		{ language: "stylus", scheme: "file" }
 	];
 	const styleMode: DocumentFilter[] = renameMode.slice(mode.length);
-	const definitionMode: DocumentFilter[] = [
-		...mode.map(filter => ({ ...filter, pattern: "**/*" })),
-		...styleMode.map(filter => ({ ...filter, pattern: "**/*.module.{css,scss,sass,less,styl,stylus}" }))
-	];
 	context.subscriptions.push(
 		languages.registerCompletionItemProvider(mode, createCSSModuleCompletionProvider(readOptions), ".", '"', "'"),
-		languages.registerDefinitionProvider(definitionMode, createCSSModuleDefinitionProvider(readOptions)),
+		languages.registerDefinitionProvider(mode, createCSSModuleDefinitionProvider(readOptions)),
 		languages.registerReferenceProvider(styleMode, createCSSModuleReferenceProvider()),
 		languages.registerRenameProvider(renameMode, createCSSModuleRenameProvider(readOptions)),
 		registerCreateCssModuleCommand(),

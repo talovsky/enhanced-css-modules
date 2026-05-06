@@ -163,16 +163,11 @@ test("test bracket definition with single quotes jump to definition", () => {
 	);
 });
 
-test("css module class definition prefers JSX usages", async () => {
-	const definitions = await getDefinitions(
-		new vscode.Position(0, 2),
-		vscode.Uri.file(path.join(FIXTURES_PATH, "references.module.css"))
-	);
+test("css module file does not provide definitions for class names", async () => {
+	const cssFile = vscode.Uri.file(path.join(FIXTURES_PATH, "references.module.css"));
+	const result = await getDefinitionLocation(new vscode.Position(0, 2), cssFile);
 
-	assert.strictEqual(definitions.length, 3);
-	assert.strictEqual(definitions[0].uri.fsPath, path.join(FIXTURES_PATH, "references.tsx"));
-	assert.strictEqual(definitions[0].range.start.line, 2);
-	assert.strictEqual(definitions[0].range.start.character, 7);
+	assert.strictEqual(result, null);
 });
 
 test("vite css module import binding resolves to css file", async () => {
