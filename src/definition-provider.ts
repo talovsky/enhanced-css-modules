@@ -1,10 +1,14 @@
-import { type TextDocument, Position, type CancellationToken, Location, Uri } from "vscode";
+import { type TextDocument, Position, type CancellationToken, Location, Uri, workspace } from "vscode";
 
 import { type ExtensionOptionsProvider, resolveOptions } from "./options";
 import { getCssClassesFromFile } from "./utils/class-names";
 import { resolveCssModulePath } from "./utils/css-module-context";
+import { findCssModuleImporters } from "./utils/css-module-importers";
+import { getCssClassAtPosition, isCssModuleDocument } from "./utils/css-module-usages";
 import { measurePerformance } from "./utils/performance";
-import { getCssModuleClickInfo } from "./utils/usages";
+import { findUsageRangesForClassNames, getCssModuleClickInfo } from "./utils/usages";
+
+const neverCancelledToken = { isCancellationRequested: false } as CancellationToken;
 
 async function getTargetPosition(filePath: string, targetClass: string): Promise<Position | null> {
 	if (targetClass === "") {
@@ -21,11 +25,30 @@ export function createCSSModuleDefinitionProvider(options: ExtensionOptionsProvi
 			document: TextDocument,
 			position: Position,
 			token?: CancellationToken
-		): Promise<Location | null> {
+		): Promise<Location | Location[] | null> {
 			const { debugPerformance, pathAlias } = resolveOptions(options);
 			return measurePerformance(
 				"definition",
 				async () => {
+					if (isCssModuleDocument(document)) {
+						const cssClass = getCssClassAtPosition(document, position);
+						if (!cssClass) {
+							return null;
+						}
+
+						const cancellationToken = token ?? neverCancelledToken;
+						const locations: Location[] = [];
+						const importers = await findCssModuleImporters(document.uri, cancellationToken);
+						for (const importer of importers) {
+							if (cancellationToken.isCancellationRequested) break;
+							const sourceDoc = await workspace.openTextDocument(importer.uri);
+							for (const usage of findUsageRangesForClassNames(sourceDoc, importer.importName, [cssClass.name])) {
+								locations.push(new Location(sourceDoc.uri, usage.range));
+							}
+						}
+						return locations.length > 0 ? locations : new Location(document.uri, cssClass.range);
+					}
+
 					const clickInfo = getCssModuleClickInfo(document, position);
 					if (!clickInfo) {
 						return null;

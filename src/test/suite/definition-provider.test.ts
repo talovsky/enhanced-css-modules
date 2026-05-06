@@ -1,29 +1,52 @@
 import assert from "node:assert";
+import path from "node:path";
 import test from "node:test";
 
 import * as vscode from "vscode";
 
 import { createCSSModuleDefinitionProvider } from "../../definition-provider";
-import { JUMP_PRECISE_DEF_FILE, SAMPLE_REACT_FILE, SPREAD_SYNTAX_FILE, STYLUS_TSX_FILE } from "../constant";
+import {
+	FIXTURES_PATH,
+	JUMP_PRECISE_DEF_FILE,
+	SAMPLE_REACT_FILE,
+	SPREAD_SYNTAX_FILE,
+	STYLUS_TSX_FILE,
+	VITE_IMPORT_FILE
+} from "../constant";
 import { readOptions } from "../utils";
 
 const uri = vscode.Uri.file(SAMPLE_REACT_FILE);
 const uri2 = vscode.Uri.file(JUMP_PRECISE_DEF_FILE);
 const uri3 = vscode.Uri.file(STYLUS_TSX_FILE);
 
-function getDefinitionLineAndChar(position: vscode.Position, fixtureFile?: vscode.Uri) {
-	return vscode.workspace.openTextDocument(fixtureFile || uri).then(text => {
-		const provider = createCSSModuleDefinitionProvider(readOptions());
-		return provider.provideDefinition(text, position, undefined).then(location => {
-			if (!location) return null;
+async function getDefinitionLineAndChar(position: vscode.Position, fixtureFile?: vscode.Uri) {
+	const location = await getDefinitionLocation(position, fixtureFile);
+	if (!location) return null;
 
-			const { line, character } = location.range.start;
-			return {
-				line,
-				character
-			};
-		});
-	});
+	const { line, character } = location.range.start;
+	return {
+		line,
+		character
+	};
+}
+
+async function getDefinitionLocation(position: vscode.Position, fixtureFile?: vscode.Uri) {
+	const text = await vscode.workspace.openTextDocument(fixtureFile || uri);
+	const provider = createCSSModuleDefinitionProvider(readOptions());
+	const result = await provider.provideDefinition(text, position, undefined);
+	if (!result) return null;
+
+	const location = Array.isArray(result) ? result[0] : result;
+	return location || null;
+}
+
+async function getDefinitions(position: vscode.Position, fixtureFile: vscode.Uri, token?: vscode.CancellationToken) {
+	const text = await vscode.workspace.openTextDocument(fixtureFile);
+	const provider = createCSSModuleDefinitionProvider(readOptions());
+	const result = await provider.provideDefinition(text, position, token);
+	if (!result) return [];
+
+	return Array.isArray(result) ? result : [result];
 }
 
 async function testDefinition(
@@ -138,4 +161,32 @@ test("test bracket definition with single quotes jump to definition", () => {
 	return Promise.resolve(testDefinition(position, 4, 1)).catch(err =>
 		assert.ok(false, `error in OpenTextDocument ${err}`)
 	);
+});
+
+test("css module class definition prefers JSX usages", async () => {
+	const definitions = await getDefinitions(
+		new vscode.Position(0, 2),
+		vscode.Uri.file(path.join(FIXTURES_PATH, "references.module.css"))
+	);
+
+	assert.strictEqual(definitions.length, 3);
+	assert.strictEqual(definitions[0].uri.fsPath, path.join(FIXTURES_PATH, "references.tsx"));
+	assert.strictEqual(definitions[0].range.start.line, 2);
+	assert.strictEqual(definitions[0].range.start.character, 7);
+});
+
+test("vite css module import binding resolves to css file", async () => {
+	const location = await getDefinitionLocation(new vscode.Position(0, 8), vscode.Uri.file(VITE_IMPORT_FILE));
+
+	assert.strictEqual(location.uri.fsPath, path.join(FIXTURES_PATH, "component.module.css"));
+	assert.strictEqual(location.range.start.line, 0);
+	assert.strictEqual(location.range.start.character, 0);
+});
+
+test("vite css module import path resolves to css file", async () => {
+	const location = await getDefinitionLocation(new vscode.Position(0, 22), vscode.Uri.file(VITE_IMPORT_FILE));
+
+	assert.strictEqual(location.uri.fsPath, path.join(FIXTURES_PATH, "component.module.css"));
+	assert.strictEqual(location.range.start.line, 0);
+	assert.strictEqual(location.range.start.character, 0);
 });

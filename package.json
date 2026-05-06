@@ -20,17 +20,14 @@
 		"fmt": "oxfmt",
 		"lint": "oxfmt && oxlint",
 		"test": "node --test ./out/test/suite/*.test.js",
-		"prepare": "husky install"
-	},
-	"dependencies": {
-		"json5": "^2.2.0"
+		"prepare": "husky"
 	},
 	"devDependencies": {
-		"@types/node": "~25.6.0",
-		"@types/vscode": "^1.116.0",
+		"@types/node": "^25.6.0",
+		"@types/vscode": "^1.80.0",
 		"esbuild": "^0.28.0",
-		"eslint": "^7.27.0",
 		"husky": ">=6",
+		"json5": "^2.2.0",
 		"nano-staged": "^1.0.2",
 		"oxfmt": "^0.46.0",
 		"oxlint": "^1.61.0",
@@ -38,7 +35,7 @@
 		"typescript": "^6.0.3"
 	},
 	"nano-staged": {
-		"*.ts": "oxfmt && oxlint",
+		"*.{ts,tsx,js,jsx}": "oxfmt && oxlint",
 		"*.{md,json}": "oxfmt"
 	},
 	"contributes": {
