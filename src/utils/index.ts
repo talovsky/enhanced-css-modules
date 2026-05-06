@@ -1,4 +1,4 @@
-import { Position, TextDocument, CompletionItem, CompletionItemKind, TextEdit, Range } from "vscode";
+import { type TextDocument, Position, CompletionItem, CompletionItemKind, TextEdit, Range } from "vscode";
 
 import { getCssClassesFromFile } from "./class-names";
 
