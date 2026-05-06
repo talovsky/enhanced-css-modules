@@ -1,11 +1,11 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import JSON5 from "json5";
 import * as vscode from "vscode";
 
 import { type AliasFromTsConfig } from "../options";
 import { WORKSPACE_FOLDER_VARIABLE } from "./constants";
+import { parseJsonc } from "./parse-jsonc";
 import { measurePerformance } from "./performance";
 
 type TsConfigPaths = Record<string, string[]>;
@@ -83,7 +83,7 @@ export async function getTsAlias(workfolder?: vscode.WorkspaceFolder): Promise<A
 		for (const file of files) {
 			try {
 				const fileContent = await fs.readFile(file.fsPath, { encoding: "utf8" });
-				const configFile = JSON5.parse(fileContent);
+				const configFile = parseJsonc(fileContent) as Parameters<typeof _getAliasFromTsConfigPaths>[0];
 				const aliasFromPaths = _getAliasFromTsConfigPaths(configFile, path.dirname(file.fsPath));
 				if (aliasFromPaths) {
 					mapping = { ...mapping, ...aliasFromPaths };

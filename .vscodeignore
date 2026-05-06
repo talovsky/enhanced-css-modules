@@ -3,6 +3,8 @@
 .pnpm-store/**
 out/test/**
 
+pnpm-lock.yaml
+
 src/**
 .gitignore
 .bun.lock

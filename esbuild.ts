@@ -14,6 +14,7 @@ const commonOptions = {
 	platform: "node",
 	target: "node20",
 	sourcemap: true,
+	minify: !watch,
 	external: ["vscode"],
 	logLevel: "info"
 };

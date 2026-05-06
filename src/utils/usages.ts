@@ -51,10 +51,11 @@ export function getCssModuleUsageAtPosition(document: TextDocument, position: Po
 	const lineStart = document.offsetAt(new Position(position.line, 0));
 	const lineOffset = offset - lineStart;
 	const usageRe = /([A-Za-z_$][\w$]*)\s*(?:(\??\.)\s*([A-Za-z_$][\w$]*)|\[\s*(["'])([^"']+)\4\s*\])/g;
+	const nonCodeRanges = computeNonCodeRanges(text);
 	let match: RegExpExecArray | null = null;
 
 	while ((match = usageRe.exec(line)) !== null) {
-		if (!isCodeOffset(text, lineStart + match.index)) {
+		if (!isOffsetInCode(nonCodeRanges, lineStart + match.index)) {
 			continue;
 		}
 		const syntax: UsageSyntax = match[2] === "." ? "dot" : "bracket";
@@ -100,13 +101,14 @@ export function findUsageRangesForClassNames(
 		`${escapedImport}\\s*(?:(\\??\\.)\\s*([A-Za-z_$][\\w$]*)(?![-\\w$])|(?:\\[\\s*(["'])([^"']+)\\3\\s*\\]))`,
 		"g"
 	);
+	const nonCodeRanges = computeNonCodeRanges(text);
 	let match: RegExpExecArray | null = null;
 
 	while ((match = usageRe.exec(text)) !== null) {
 		const foundName = match[2] || match[4];
 		const classStart = match.index + match[0].lastIndexOf(foundName);
 		const accessStart = match[1] ? match.index + match[0].lastIndexOf(match[1]) : classStart;
-		if (classNameSet.has(foundName) && isCodeOffset(text, match.index)) {
+		if (classNameSet.has(foundName) && isOffsetInCode(nonCodeRanges, match.index)) {
 			ranges.push({
 				accessRange: new Range(document.positionAt(accessStart), document.positionAt(classStart + foundName.length)),
 				operator: match[1] as "." | "?." | undefined,
@@ -141,49 +143,62 @@ function escapeRegExp(value: string): string {
 	return value.replace(/[.*+?^${}()|[\]\\]/g, String.raw`\$&`);
 }
 
-function isCodeOffset(text: string, offset: number): boolean {
-	let state: "code" | "lineComment" | "blockComment" | "singleQuote" | "doubleQuote" | "template" = "code";
-	let escaped = false;
+type NonCodeRange = readonly [number, number];
 
-	for (let i = 0; i < offset; i++) {
-		const char = text[i];
+function computeNonCodeRanges(text: string): NonCodeRange[] {
+	const ranges: NonCodeRange[] = [];
+	const n = text.length;
+	let i = 0;
+	while (i < n) {
+		const c = text[i];
 		const next = text[i + 1];
-
-		if (state === "lineComment") {
-			if (char === "\n" || char === "\r") {
-				state = "code";
-			}
-		} else if (state === "blockComment") {
-			if (char === "*" && next === "/") {
-				i++;
-				state = "code";
-			}
-		} else if (state === "singleQuote" || state === "doubleQuote" || state === "template") {
-			if (escaped) {
-				escaped = false;
-			} else if (char === "\\") {
-				escaped = true;
-			} else if (
-				(state === "singleQuote" && char === "'") ||
-				(state === "doubleQuote" && char === '"') ||
-				(state === "template" && char === "`")
-			) {
-				state = "code";
-			}
-		} else if (char === "/" && next === "/") {
-			i++;
-			state = "lineComment";
-		} else if (char === "/" && next === "*") {
-			i++;
-			state = "blockComment";
-		} else if (char === "'") {
-			state = "singleQuote";
-		} else if (char === '"') {
-			state = "doubleQuote";
-		} else if (char === "`") {
-			state = "template";
+		if (c === "/" && next === "/") {
+			const start = i;
+			i += 2;
+			while (i < n && text[i] !== "\n" && text[i] !== "\r") i++;
+			ranges.push([start, i]);
+			continue;
 		}
+		if (c === "/" && next === "*") {
+			const start = i;
+			i += 2;
+			while (i < n - 1 && !(text[i] === "*" && text[i + 1] === "/")) i++;
+			i = Math.min(i + 2, n);
+			ranges.push([start, i]);
+			continue;
+		}
+		if (c === "'" || c === '"' || c === "`") {
+			const quote = c;
+			const start = i;
+			i++;
+			while (i < n) {
+				if (text[i] === "\\") {
+					i += 2;
+					continue;
+				}
+				if (text[i] === quote) {
+					i++;
+					break;
+				}
+				i++;
+			}
+			ranges.push([start, i]);
+			continue;
+		}
+		i++;
 	}
+	return ranges;
+}
 
-	return state === "code";
+function isOffsetInCode(ranges: NonCodeRange[], offset: number): boolean {
+	let lo = 0;
+	let hi = ranges.length - 1;
+	while (lo <= hi) {
+		const mid = (lo + hi) >>> 1;
+		const [start, end] = ranges[mid];
+		if (offset < start) hi = mid - 1;
+		else if (offset >= end) lo = mid + 1;
+		else return false;
+	}
+	return true;
 }
